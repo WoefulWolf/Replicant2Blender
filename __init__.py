@@ -14,24 +14,38 @@ bl_info = {
 import bpy
 import os
 from bpy_extras.io_utils import ExportHelper,ImportHelper
-from bpy.props import StringProperty, BoolProperty, EnumProperty
+from bpy.props import StringProperty, BoolProperty, EnumProperty, CollectionProperty
+from bpy.types import Operator, OperatorFileListElement
+
 
 class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
-    '''Import a NieR Replicant Mesh Pack File.'''
+    '''Import NieR Replicant Mesh Pack File(s)'''
     bl_idname = "import.replicant_mesh_pack"
-    bl_label = "Import Mesh Pack File"
+    bl_label = "Import File(s)"
     bl_options = {'PRESET', "REGISTER", "UNDO"}
+    files = CollectionProperty(
+            name="File Path",
+            type=OperatorFileListElement,
+            )
+    directory = StringProperty(
+            subtype='DIR_PATH',
+            )
     #filename_ext = ".xap"
     #filter_glob: StringProperty(default="*.xap", options={'HIDDEN'})
 
     def execute(self, context):
+        directory = self.directory
         from . import pack_import
-        return pack_import.main(self.filepath)
+        for file_elem in self.files:
+            filepath = os.path.join(directory, file_elem.name)
+            if os.path.isfile(filepath):
+                pack_import.main(filepath)
+        return {"FINISHED"}
 
 
 # Registration
 def replicant_import_mesh_pack(self, context):
-    self.layout.operator(ImportReplicantMeshPack.bl_idname, text="NieR Replicant Mesh Pack")
+    self.layout.operator(ImportReplicantMeshPack.bl_idname, text="NieR Replicant Mesh Pack(s)")
 
 def register():
     bpy.utils.register_class(ImportReplicantMeshPack)

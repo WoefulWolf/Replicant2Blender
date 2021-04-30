@@ -81,4 +81,3 @@ def main(packFilePath):
     construct_meshes(pack)
 
     packFile.close()
-    return {"FINISHED"}
