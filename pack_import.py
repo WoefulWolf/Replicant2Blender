@@ -19,6 +19,8 @@ def construct_meshes(pack):
         for k, obj in enumerate(meshAsset.content.meshHead.objectGroups):
             vertices = pack.meshData[i].objectGroupVertices[k].vertexCoords
             faces = pack.meshData[i].objectGroupIndices[k].indices
+            weights = pack.meshData[i].objectGroupVertices[k].vertexWeights
+            boneIndices = pack.meshData[i].objectGroupVertices[k].vertexBoneIndices
 
             """
             normals = []
@@ -50,6 +52,25 @@ def construct_meshes(pack):
                 if newMaterial is None:
                     newMaterial = bpy.data.materials.new(name=material.name)
                 bObj.data.materials.append(newMaterial)
+
+            # Create vertex groups for bones
+            for bone in meshAsset.content.meshHead.bonesData:
+                bObj.vertex_groups.new(name=bone.name)
+
+            # Assign weights
+            for m, weight in enumerate(weights):
+                vertexGroups = []
+                vertexBoneIndices = boneIndices[m]
+                if (len(weight) == 4):
+                    vertexWeights = [weight[0], weight[1], weight[2], weight[3]]
+                    vertexGroups = [bObj.vertex_groups[vertexBoneIndices[0]], bObj.vertex_groups[vertexBoneIndices[1]], bObj.vertex_groups[vertexBoneIndices[2]], bObj.vertex_groups[vertexBoneIndices[3]]]
+                elif (len(weight) == 3):
+                    vertexWeights = [weight[0], weight[1], weight[2]]
+                    vertexGroups = [bObj.vertex_groups[vertexBoneIndices[0]], bObj.vertex_groups[vertexBoneIndices[1]], bObj.vertex_groups[vertexBoneIndices[2]]]
+
+                for n, group in enumerate(vertexGroups):
+                    if vertexWeights[n] > 0:
+                        group.add([m], vertexWeights[n], "REPLACE")
                 
             # Assign UVs
             bpy.context.view_layer.objects.active = bObj

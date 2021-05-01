@@ -25,11 +25,24 @@ class objectGroupVertexData:
                         w0 = to_float(packFile.read(4))
                         w1 = to_float(packFile.read(4))
                         w2 = to_float(packFile.read(4))
-                        self.vertexWeights.append([w0, w1, w2])
+                        w3 = 1 - w0 - w1 - w2
+                        self.vertexWeights.append([w0, w1, w2, w3])
 
                 else:
                     for k in range(objectGroup.vertexCount):
                         packFile.seek(12, 1)
+
+            elif (objectGroup.vertexData[i].vertexStructSize == 8):
+
+                if (objectGroup.vertexData[i].vertexStructFlag == 6):
+                    for k in range(objectGroup.vertexCount):
+                        w0 = to_float(packFile.read(4))
+                        w1 = to_float(packFile.read(4))
+                        w2 = 1 - w0 - w1
+                        self.vertexWeights.append([w0, w1, w2])
+                else:
+                    for k in range(objectGroup.vertexCount):
+                        packFile.seek(8, 1)
 
             elif (objectGroup.vertexData[i].vertexStructSize == 4):
 
