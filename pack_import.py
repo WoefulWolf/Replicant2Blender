@@ -1,6 +1,6 @@
 from .classes.pack import *
 from mathutils import Vector, Matrix
-import bpy, bmesh
+import bpy, bmesh, numpy
 
 def get_meshAssetFiles(pack):
     meshAssetFiles = []
@@ -16,6 +16,42 @@ def construct_meshes(pack):
         meshCollection = bpy.data.collections.new(meshAsset.name)
         bpy.context.scene.collection.children.link(meshCollection)
 
+        # Create Armature + Bones
+        if meshAsset.content.meshHead.header.boneDataCount > 0:
+            amtName = meshAsset.name + "_armature"
+            amt = bpy.data.armatures.new(amtName)
+            amtObj = bpy.data.objects.new(amtName, amt)
+            meshCollection.objects.link(amtObj)
+            bpy.context.view_layer.objects.active = amtObj
+            bpy.ops.object.mode_set(mode="EDIT")
+            for k, boneData in enumerate(meshAsset.content.meshHead.bonesData):
+                tailVector = numpy.matmul(boneData.unknownMatrix0, [boneData.length, 0, 0, 1])
+                newBone = amt.edit_bones.new(boneData.name)
+                newBone.head = [tailVector[0], tailVector[1]-0.05, tailVector[2]]
+                newBone.tail = [tailVector[0], tailVector[1], tailVector[2]]
+                if k == 0:
+                    newBone.head = [0, tailVector[1]-0.05, tailVector[2]]
+                    newBone.tail = [0, tailVector[1], tailVector[2]]
+
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+            bpy.ops.object.mode_set(mode="EDIT")
+            safeBones = []
+            for bone in meshAsset.content.meshHead.bonesData:
+                safeBones.append(bone.name)
+            for k, edit_bone in enumerate(amt.edit_bones):
+                for bone in meshAsset.content.meshHead.bones:
+                    if bone.name == edit_bone.name and bone.parentBoneIndex != -1:
+                        parentIndex = bone.parentBoneIndex
+                        parentName = meshAsset.content.meshHead.bones[bone.parentBoneIndex].name
+                        if parentName in safeBones:
+                            edit_bone.parent = amt.edit_bones[parentName]
+                            edit_bone.head = edit_bone.parent.tail
+                        break
+            bpy.ops.object.mode_set(mode='OBJECT')
+            amtObj.rotation_euler = (math.radians(90),0,0)
+
+        # Create objects
         for k, obj in enumerate(meshAsset.content.meshHead.objectGroups):
             vertices = pack.meshData[i].objectGroupVertices[k].vertexCoords
             faces = pack.meshData[i].objectGroupIndices[k].indices
@@ -93,6 +129,18 @@ def construct_meshes(pack):
 
             bpy.ops.object.mode_set(mode='OBJECT')
             bObj.rotation_euler = (math.radians(90),0,0)
+
+            # Parent object to armature
+            if meshAsset.content.meshHead.header.boneDataCount > 0:
+                bpy.context.view_layer.objects.active = amtObj
+                bObj.select_set(True)
+                amtObj.select_set(True)
+                bpy.ops.object.parent_set(type="ARMATURE")
+                bObj.select_set(False)
+                amtObj.select_set(False)
+
+
+
 
 def main(packFilePath):
     packFile = open(packFilePath, "rb")

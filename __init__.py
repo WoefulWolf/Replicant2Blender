@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Replicant2Blender (NieR Replicant ver.1.2247 Mesh Pack Importer)",
     "author": "Woeful_Wolf",
-    "version": (0, 1),
+    "version": (0, 2),
     "blender": (2, 92, 0),
     "api": 38019,
     "location": "File > Import",
@@ -23,11 +23,11 @@ class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
     bl_idname = "import.replicant_mesh_pack"
     bl_label = "Import File(s)"
     bl_options = {'PRESET', "REGISTER", "UNDO"}
-    files = CollectionProperty(
+    files : CollectionProperty(
             name="File Path",
             type=OperatorFileListElement,
             )
-    directory = StringProperty(
+    directory : StringProperty(
             subtype='DIR_PATH',
             )
     #filename_ext = ".xap"

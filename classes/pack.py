@@ -7,22 +7,22 @@ from .tpGxMeshData import tpGxMeshData
 class Pack:
     def __init__(self, packFile):
         self.id = packFile.read(4)
-        self.version = to_int(packFile.read(4))
+        self.version = to_uint(packFile.read(4))
 
-        self.packFileTotalSize = to_int(packFile.read(4))
-        self.packFileSerializedSize = to_int(packFile.read(4))
-        self.packFileResourceSize = to_int(packFile.read(4))
+        self.packFileTotalSize = to_uint(packFile.read(4))
+        self.packFileSerializedSize = to_uint(packFile.read(4))
+        self.packFileResourceSize = to_uint(packFile.read(4))
 
-        self.pathCount = to_int(packFile.read(4))
-        self.offsetToPaths = to_int(packFile.read(4))
+        self.pathCount = to_uint(packFile.read(4))
+        self.offsetToPaths = to_uint(packFile.read(4))
         offsetPaths = packFile.tell() + self.offsetToPaths - 4
 
-        self.assetCount = to_int(packFile.read(4))
-        self.offsetToAssets = to_int(packFile.read(4))
+        self.assetCount = to_uint(packFile.read(4))
+        self.offsetToAssets = to_uint(packFile.read(4))
         offsetAssets = packFile.tell() + self.offsetToAssets - 4
 
-        self.fileCount = to_int(packFile.read(4))
-        self.offsetToFiles = to_int(packFile.read(4))
+        self.fileCount = to_uint(packFile.read(4))
+        self.offsetToFiles = to_uint(packFile.read(4))
         offsetFiles = packFile.tell() + self.offsetToFiles - 4
 
         print("\nPack Paths:")
@@ -35,7 +35,7 @@ class Pack:
         packFile.seek(offsetAssets)
         self.assets = []
         for i in range(self.assetCount):
-            self.paths.append(Asset(packFile))
+            self.assets.append(Asset(packFile))
 
         print("\nPack Files:")
         packFile.seek(offsetFiles)

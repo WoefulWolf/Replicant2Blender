@@ -1,17 +1,19 @@
 # Replicant2Blender
 
 ## CURRENTLY IN ALPHA:
-* Armature/Bones not being imported at the moment.
+* Armature/Bones imports aren't perfect.
 * No automatic texture setup.
 * Please let me know of any issues (contact me here or on the [NieR:Modding Discord Server](https://discord.gg/7F76ZVv)).
 
-## What does support right now?:
+## What does support right now?
 * Character meshes.
 * Weapon meshes.
 * World/Map meshes.
 * Honestly, any mesh pack I could find. (Let me know if you find one that doesn't work!)
 * UV maps.
-* Per-face assigned materials.
+* Vertex groups.
+* Basic armature.
+* Materials.
 
 ## Installation Instructions:
 1. Install [Blender](https://www.blender.org/) (also available on Steam).
@@ -29,3 +31,7 @@
 
 ## How do I get extracted mesh packs?
 https://github.com/yretenai/kaine/releases
+
+## Extra Credits
+* Kerilk for structure reversing help.
+* yretenai for `kaine` tool and other help.

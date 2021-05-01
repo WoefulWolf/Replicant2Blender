@@ -48,10 +48,10 @@ class objectGroupVertexData:
 
                 if (objectGroup.vertexData[i].vertexStructFlag == 1):
                     for k in range(objectGroup.vertexCount):
-                        nx = to_int(packFile.read(1))
-                        ny = to_int(packFile.read(1))
-                        nz = to_int(packFile.read(1))
-                        dummy = to_int(packFile.read(1))
+                        nx = to_uint(packFile.read(1))
+                        ny = to_uint(packFile.read(1))
+                        nz = to_uint(packFile.read(1))
+                        dummy = to_uint(packFile.read(1))
                         self.vertexNormals.append([nx, ny, nz, dummy])
 
                 elif (objectGroup.vertexData[i].vertexStructFlag == 2):
@@ -67,10 +67,10 @@ class objectGroupVertexData:
                 
                 elif (objectGroup.vertexData[i].vertexStructFlag == 5):
                     for k in range(objectGroup.vertexCount):
-                        b0 = to_int(packFile.read(1))
-                        b1 = to_int(packFile.read(1))
-                        b2 = to_int(packFile.read(1))
-                        b3 = to_int(packFile.read(1))
+                        b0 = to_uint(packFile.read(1))
+                        b1 = to_uint(packFile.read(1))
+                        b2 = to_uint(packFile.read(1))
+                        b3 = to_uint(packFile.read(1))
                         self.vertexBoneIndices.append([b0, b1, b2, b3])
 
                 else:
@@ -92,9 +92,9 @@ class objectGroupIndicesData:
 
         else:
             for i in range(round(objectGroup.indicesCount / 3)):
-                v0 = to_int(packFile.read(4))
-                v1 = to_int(packFile.read(4))
-                v2 = to_int(packFile.read(4))
+                v0 = to_uint(packFile.read(4))
+                v1 = to_uint(packFile.read(4))
+                v2 = to_uint(packFile.read(4))
                 self.indices.append([v2, v1, v0])           # Uses reversed index order compared to Blender
 
         alignRelative(packFile, 0, 4)
