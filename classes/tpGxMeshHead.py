@@ -41,16 +41,9 @@ class Bone:
 
         self.parentBoneIndex = to_int(packFile.read(4))
 
-        self.unknownFloat0 = to_float(packFile.read(4))
-        self.unknownFloat1 = to_float(packFile.read(4))
-        self.unknownFloat2 = to_float(packFile.read(4))
-        self.unknownFloat3 = to_float(packFile.read(4))
-        self.unknownFloat4 = to_float(packFile.read(4))
-        self.unknownFloat5 = to_float(packFile.read(4))
-        self.unknownFloat6 = to_float(packFile.read(4))
-        self.unknownFloat7 = to_float(packFile.read(4))
-        self.unknownFloat8 = to_float(packFile.read(4))
-        self.unknownFloat9 = to_float(packFile.read(4))
+        self.quaternionRot = [to_float(packFile.read(4)), to_float(packFile.read(4)), to_float(packFile.read(4)), to_float(packFile.read(4))]
+        self.scale = [to_float(packFile.read(4)), to_float(packFile.read(4)), to_float(packFile.read(4))]
+        self.localPos = [to_float(packFile.read(4)), to_float(packFile.read(4)), to_float(packFile.read(4))]
 
         returnPos = packFile.tell()
         packFile.seek(self.offsetName)
@@ -83,7 +76,7 @@ class VertexData:
         self.objectGroupVertexDataOffset = to_uint(packFile.read(4))
 
         self.unknownUInt_32_0 = to_uint(packFile.read(4))
-        self.unknownUInt_32_1 = to_uint(packFile.read(4))
+        self.vertexStructTypeIndex = to_uint(packFile.read(4))
 
         self.vertexStructSize = to_uint(packFile.read(4))
         self.vertexStructFlag = to_uint(packFile.read(1))
