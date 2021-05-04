@@ -1,7 +1,7 @@
 # Replicant2Blender
 
 ## CURRENTLY IN ALPHA:
-* Armature/Bones imports aren't perfect.
+* Armature/Bones imports aren't perfect (only seems to work on certain models at the moment).
 * No automatic texture setup.
 * Please let me know of any issues (contact me here or on the [NieR:Modding Discord Server](https://discord.gg/7F76ZVv)).
 
@@ -10,7 +10,7 @@
 * Weapon meshes.
 * World/Map meshes.
 * Honestly, any mesh pack I could find. (Let me know if you find one that doesn't work!)
-* UV maps.
+* Multiple UV maps.
 * Vertex groups.
 * Basic armature.
 * Materials.
