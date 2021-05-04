@@ -6,7 +6,7 @@ class objectGroupVertexData:
         self.vertexCoords = []
         self.vertexWeights = []
         self.vertexNormals = []
-        self.vertexUVs = []
+        self.vertexUVMaps = [ [] for _ in range(8) ]
         self.vertexBoneIndices = []
 
         for i in range(objectGroup.vertexDataCount):
@@ -48,22 +48,24 @@ class objectGroupVertexData:
 
                 if (objectGroup.vertexData[i].vertexStructFlag == 1):
                     for k in range(objectGroup.vertexCount):
-                        nx = to_uint(packFile.read(1))
-                        ny = to_uint(packFile.read(1))
-                        nz = to_uint(packFile.read(1))
-                        dummy = to_uint(packFile.read(1))
+                        nx = to_int(packFile.read(1))
+                        ny = to_int(packFile.read(1))
+                        nz = to_int(packFile.read(1))
+                        dummy = to_int(packFile.read(1))
                         self.vertexNormals.append([nx, ny, nz, dummy])
 
                 elif (objectGroup.vertexData[i].vertexStructFlag == 2):
                     for k in range(objectGroup.vertexCount):
-                        # TODO Perhaps tangents
-                        packFile.seek(4, 1)
+                        tx = to_int(packFile.read(1))
+                        ty = to_int(packFile.read(1))
+                        tz = to_int(packFile.read(1))
+                        bi = to_int(packFile.read(1))
 
                 elif (objectGroup.vertexData[i].vertexStructFlag == 4):
                     for k in range(objectGroup.vertexCount):
                         u = to_float16(packFile.read(2))
                         v = 1 - to_float16(packFile.read(2))
-                        self.vertexUVs.append([u, v])
+                        self.vertexUVMaps[objectGroup.vertexData[i].vertexStructTypeIndex].append([u, v])
                 
                 elif (objectGroup.vertexData[i].vertexStructFlag == 5):
                     for k in range(objectGroup.vertexCount):
@@ -115,6 +117,7 @@ class tpGxMeshData:
         for objectGroup in meshHead.objectGroups:
             self.objectGroupIndices.append(objectGroupIndicesData(packFile, objectGroup))
 
+        """
         self.meshVertexCoords = []
         self.meshVertexWeights = []
         self.meshVertexNormals = []
@@ -131,3 +134,4 @@ class tpGxMeshData:
         
         for group in self.objectGroupIndices:
             self.meshIndices += group.indices
+        """
