@@ -61,9 +61,9 @@ def construct_meshes(pack):
             """
             normals = []
             for m in range(len(vertices)):
-                nx = pack.meshData[i].objectGroupVertices[k].vertexNormals[m][0] / 255
-                ny = pack.meshData[i].objectGroupVertices[k].vertexNormals[m][1] / 255
-                nz = pack.meshData[i].objectGroupVertices[k].vertexNormals[m][2] / 255
+                nx = pack.meshData[i].objectGroupVertices[k].vertexNormals[m][0] / 127
+                ny = pack.meshData[i].objectGroupVertices[k].vertexNormals[m][1] / 127
+                nz = pack.meshData[i].objectGroupVertices[k].vertexNormals[m][2] / 127
                 normals.append([nz, ny, nx])
             """
 
@@ -112,20 +112,27 @@ def construct_meshes(pack):
             bpy.context.view_layer.objects.active = bObj
             bpy.ops.object.mode_set(mode="EDIT")
             bm = bmesh.from_edit_mesh(bObj.data)
-            uv_layer = bm.loops.layers.uv.verify()
+            uv_layers = [bm.loops.layers.uv.verify()]
+            for m, uvMap in enumerate(pack.meshData[i].objectGroupVertices[k].vertexUVMaps):
+                if m > 0 and len(pack.meshData[i].objectGroupVertices[k].vertexUVMaps[m]) > 0:
+                    uv_layers.append(bm.loops.layers.uv.new("UVMap" + str(m)))
+
             for face in bm.faces:
                 face.material_index = 0
                 for l in face.loops:
-                    luv = l[uv_layer]
-                    ind = l.vert.index
-                    luv.uv = Vector(pack.meshData[i].objectGroupVertices[k].vertexUVs[ind])
+                    for m, uv_layer in enumerate(uv_layers):
+                        if len(pack.meshData[i].objectGroupVertices[k].vertexUVMaps[m]) > 0:
+                            luv = l[uv_layer]
+                            idx = l.vert.index
+                            luv.uv = Vector(pack.meshData[i].objectGroupVertices[k].vertexUVMaps[m][idx])
 
             # Assign Materials To Faces
             bm.verts.ensure_lookup_table()
             for matObjects in meshAsset.content.meshHead.objects:
                 matFaces = faces[matObjects.indicesStart//3:matObjects.indicesStart//3 + matObjects.indicesCount//3]
                 for matFace in matFaces:
-                    bm.faces.get([bm.verts[matFace[0]], bm.verts[matFace[1]], bm.verts[matFace[2]]]).material_index = matObjects.materialIndex
+                    if (bm.verts[matFace[0]] != bm.verts[matFace[1]] != bm.verts[matFace[2]]):
+                        face = bm.faces.get([bm.verts[matFace[0]], bm.verts[matFace[1]], bm.verts[matFace[2]]]).material_index = matObjects.materialIndex
 
             bpy.ops.object.mode_set(mode='OBJECT')
             bObj.rotation_euler = (math.radians(90),0,0)
@@ -139,14 +146,14 @@ def construct_meshes(pack):
                 bObj.select_set(False)
                 amtObj.select_set(False)
 
-
-
-
 def main(packFilePath):
     packFile = open(packFilePath, "rb")
 
+    print("Parsing PACK file...")
     pack = Pack(packFile)
 
+    print("\nConstructing Blender Objects...")
     construct_meshes(pack)
 
     packFile.close()
+    print('Importing finished. ;)')
