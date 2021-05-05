@@ -129,6 +129,8 @@ def construct_meshes(pack):
             # Assign Materials To Faces
             bm.verts.ensure_lookup_table()
             for matObjects in meshAsset.content.meshHead.objects:
+                if matObjects.objectGroupIndex != k:
+                    continue
                 matFaces = faces[matObjects.indicesStart//3:matObjects.indicesStart//3 + matObjects.indicesCount//3]
                 for matFace in matFaces:
                     if (bm.verts[matFace[0]] != bm.verts[matFace[1]] != bm.verts[matFace[2]]):
