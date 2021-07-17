@@ -1,7 +1,7 @@
 bl_info = {
-    "name": "Replicant2Blender (NieR Replicant ver.1.2247 Mesh Pack Importer)",
+    "name": "Replicant2Blender (NieR Replicant ver.1.2247... Mesh Pack Importer)",
     "author": "Woeful_Wolf",
-    "version": (0, 2),
+    "version": (0, 3),
     "blender": (2, 92, 0),
     "api": 38019,
     "location": "File > Import",
@@ -16,6 +16,7 @@ import os
 from bpy_extras.io_utils import ExportHelper,ImportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty, CollectionProperty
 from bpy.types import Operator, OperatorFileListElement
+from . import pack_import
 
 
 class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
@@ -25,23 +26,48 @@ class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
     bl_options = {'PRESET', "REGISTER", "UNDO"}
     files : CollectionProperty(
             name="File Path",
-            type=OperatorFileListElement,
-            )
-    directory : StringProperty(
-            subtype='DIR_PATH',
-            )
-    #filename_ext = ".xap"
-    #filter_glob: StringProperty(default="*.xap", options={'HIDDEN'})
+            type=OperatorFileListElement)
+    directory : StringProperty(subtype='DIR_PATH')
+    batch_size: bpy.props.IntProperty(name="Texture Conversion Batch Size", default=15, description="Batch sizes when converting textures. Higher values will be faster but require more CPU resources", min=1)
+    extract_textures: bpy.props.BoolProperty(name="Extract Textures (Slow)", description="This automatically extracts and converts textures to PNG (Requires the user to have setup Noesis in this add-on's preferences)", default=True)
+    construct_materials: bpy.props.BoolProperty(name="Construct Materials", description="This automatically sets up materials with the appropriate textures (Requires the user to have extracted the textures at least once before)", default=True)
 
     def execute(self, context):
         directory = self.directory
-        from . import pack_import
         for file_elem in self.files:
             filepath = os.path.join(directory, file_elem.name)
             if os.path.isfile(filepath):
-                pack_import.main(filepath)
+                pack_import.main(filepath, self.extract_textures, self.construct_materials, self.batch_size)
+        pack_import.clear_importLists()
         return {"FINISHED"}
 
+class SelectNoesisExecutable(bpy.types.Operator, ImportHelper):
+    '''Select Noesis Executable'''
+    bl_idname = "replicant.noesis_select"
+    bl_label = "Select Noesis Executable"
+    filename_ext = ".exe"
+    filter_glob: StringProperty(default="*.exe", options={'HIDDEN'})
+
+    def execute(self, context):
+        context.preferences.addons['Replicant2Blender'].preferences.noesis_path = self.filepath
+        return {'FINISHED'}
+
+class Replicant2BlenderPreferences(bpy.types.AddonPreferences):
+    bl_idname = __package__
+    noesis_path : StringProperty(default="", options={'HIDDEN'})
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="Automatic texture & material setup requires that you have Noesis:")
+        row = layout.row()
+        row.operator("wm.url_open", text="Noesis Download").url = "https://richwhitehouse.com/index.php?content=inc_projects.php"
+        layout.label(text="Path To Noesis Executable:")
+        if os.name != 'nt':
+            layout.label(text="If you aren't on Windows this probably won't work out of the box, but I'll leave it accessible anyways.")
+        row = layout.row()
+        row.prop(self, "noesis_path", text="")
+        row.operator("replicant.noesis_select", icon="FILE_TICK", text="")
+            
 
 # Registration
 def replicant_import_mesh_pack(self, context):
@@ -49,11 +75,15 @@ def replicant_import_mesh_pack(self, context):
 
 def register():
     bpy.utils.register_class(ImportReplicantMeshPack)
+    bpy.utils.register_class(SelectNoesisExecutable)
     bpy.types.TOPBAR_MT_file_import.append(replicant_import_mesh_pack)
+    bpy.utils.register_class(Replicant2BlenderPreferences)
 
 def unregister():
     bpy.utils.unregister_class(ImportReplicantMeshPack)
+    bpy.utils.unregister_class(SelectNoesisExecutable)
     bpy.types.TOPBAR_MT_file_import.remove(replicant_import_mesh_pack)
+    bpy.utils.unregister_class(Replicant2BlenderPreferences)
 
 if __name__ == '__main__':
     register()
