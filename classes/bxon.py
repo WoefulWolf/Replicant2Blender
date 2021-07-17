@@ -1,5 +1,7 @@
 from ..util import *
+from .tpGxAssetHeader import tpGxAssetHeader
 from .tpGxMeshHead import tpGxMeshHead
+from .tpGxTexHead import tpGxTexHead
 
 class BXON:
     def __init__(self, packFile):
@@ -10,17 +12,21 @@ class BXON:
         self.offsetToFileTypeName = to_int(packFile.read(4))
         offsetFileTypeName = packFile.tell() + self.offsetToFileTypeName - 4
 
-        self.offsetToFileData = to_int(packFile.read(4))
-        offsetFileData = packFile.tell() + self.offsetToFileData - 4
+        self.offsetToAssetData = to_int(packFile.read(4))
+        offsetAssetData = packFile.tell() + self.offsetToAssetData - 4
 
         returnPos = packFile.tell()
         packFile.seek(offsetFileTypeName)
         self.fileTypeName = to_string(packFile.read(1024))
 
-        if (self.fileTypeName == "tpGxMeshHead"):
-            packFile.seek(offsetFileData)
+        packFile.seek(offsetAssetData)
+        if (self.fileTypeName == "tpXonAssetHeader"):
+            self.assetHeader = tpGxAssetHeader(packFile)
+        elif (self.fileTypeName == "tpGxMeshHead"):
             self.meshHead = tpGxMeshHead(packFile)
+        elif (self.fileTypeName == "tpGxTexHead"):
+            self.texHead = tpGxTexHead(packFile)
 
         packFile.seek(returnPos)
 
-        print(" >", self.fileTypeName)
+        print("\t\t>", self.fileTypeName)
