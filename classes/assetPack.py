@@ -1,6 +1,7 @@
 from ..util import *
+from .bxon import BXON
 
-class Asset:
+class AssetPack:
     def __init__(self, packFile):
         self.hash = packFile.read(4)
 
@@ -9,12 +10,19 @@ class Asset:
 
         self.fileSize = to_int(packFile.read(4))
         self.offsetToContentStart = to_int(packFile.read(4))
+        offsetContentStart = packFile.tell() + self.offsetToContentStart - 4
         self.offsetToContentEnd = to_int(packFile.read(4))
 
         returnPos = packFile.tell()
         packFile.seek(offsetName)
         self.name = to_string(packFile.read(1024))
 
-        packFile.seek(returnPos)
+        print("\t[+]", self.name)
 
-        print("[+]", self.name)
+        packFile.seek(offsetContentStart)
+        fileID = packFile.read(4)
+        packFile.seek(-4, 1)
+        if (fileID == b"BXON"):
+            self.content = BXON(packFile)
+        else:
+            self.content = None
