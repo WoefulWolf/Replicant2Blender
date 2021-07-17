@@ -2,7 +2,6 @@
 
 ## CURRENTLY IN ALPHA:
 * Armature/Bones imports aren't perfect (only seems to work on certain models at the moment).
-* No automatic texture setup.
 * Please let me know of any issues (contact me here or on the [NieR:Modding Discord Server](https://discord.gg/7F76ZVv)).
 
 ## What does support right now?
@@ -10,9 +9,10 @@
 * Weapon meshes.
 * World/Map meshes.
 * Honestly, any mesh pack I could find. (Let me know if you find one that doesn't work!)
+* Automatic texture extraction, conversion & material node setup (make sure you have Noesis path set in Add-on Preferences).
 * Multiple UV maps.
 * Vertex groups.
-* Basic armature.
+* Basic armature (only for certain models).
 * Materials.
 
 ## Installation Instructions:
@@ -22,7 +22,8 @@
 4. Go to `Edit > Preferences`.
 5. Go to the `Add-ons` section and press `Install...` near the top-right.
 6. Select the ZIP you downloaded in step 2 and press `Install Add-on`.
-7. Check the tickbox next to `Import-Export: Replicant2Blender (NieR Replicant ver.1.2247 Mesh Pack Importer)`.
+7. Check the tickbox next to `Import-Export: Replicant2Blender (NieR Replicant ver.1.2247... Mesh Pack Importer)`.
+8. (Optional) If you want automatic texture extraction, conversion & material node setup: open the preferences drop-down for the add-on and set your path to `Noesis.exe` (download if you don't have it yet).
 
 ## Usage:
 * `File > Import > NieR Replicant Mesh Pack`
