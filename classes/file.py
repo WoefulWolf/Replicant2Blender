@@ -18,7 +18,7 @@ class File:
         packFile.seek(offsetName)
         self.name = to_string(packFile.read(1024))
         
-        print("[+]", self.name)
+        print("\t[+]", self.name)
 
         packFile.seek(offsetFileStart)
         fileID = packFile.read(4)

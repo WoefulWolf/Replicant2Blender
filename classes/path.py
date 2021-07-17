@@ -15,4 +15,4 @@ class Path:
 
         packFile.seek(returnPos)
 
-        print("[+]", self.path)
+        print("\t[+]", self.path)
