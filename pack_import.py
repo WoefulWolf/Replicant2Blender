@@ -11,7 +11,7 @@ def clear_importLists():
     imported_materialPacks.clear()
     imported_texturePacks.clear()
 
-def main(packFilePath, do_extract_textures, do_construct_materials, batch_size):
+def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, addon_name):
     pack_directory = os.path.dirname(os.path.abspath(packFilePath))
 
     # meshPack
@@ -24,7 +24,7 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size):
 
     # Import materials + textures
     if do_extract_textures or do_construct_materials:
-        noesis_path = bpy.context.preferences.addons['Replicant2Blender'].preferences.noesis_path
+        noesis_path = bpy.context.preferences.addons[addon_name].preferences.noesis_path
         if not os.path.isfile(noesis_path):
             print("Noesis path is not set or invalid. Cancelling texture import!")
             return

@@ -27,7 +27,7 @@ class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
     files : CollectionProperty(
             name="File Path",
             type=OperatorFileListElement)
-    directory : StringProperty(subtype='DIR_PATH')
+    directory: StringProperty(subtype='DIR_PATH')
     batch_size: bpy.props.IntProperty(name="Texture Conversion Batch Size", default=15, description="Batch sizes when converting textures. Higher values will be faster but require more CPU resources", min=1)
     extract_textures: bpy.props.BoolProperty(name="Extract Textures (Slow)", description="This automatically extracts and converts textures to PNG (Requires the user to have setup Noesis in this add-on's preferences)", default=True)
     construct_materials: bpy.props.BoolProperty(name="Construct Materials", description="This automatically sets up materials with the appropriate textures (Requires the user to have extracted the textures at least once before)", default=True)
@@ -37,7 +37,7 @@ class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
         for file_elem in self.files:
             filepath = os.path.join(directory, file_elem.name)
             if os.path.isfile(filepath):
-                pack_import.main(filepath, self.extract_textures, self.construct_materials, self.batch_size)
+                pack_import.main(filepath, self.extract_textures, self.construct_materials, self.batch_size, __name__)
         pack_import.clear_importLists()
         return {"FINISHED"}
 
@@ -49,7 +49,7 @@ class SelectNoesisExecutable(bpy.types.Operator, ImportHelper):
     filter_glob: StringProperty(default="*.exe", options={'HIDDEN'})
 
     def execute(self, context):
-        context.preferences.addons['Replicant2Blender'].preferences.noesis_path = self.filepath
+        context.preferences.addons[__name__].preferences.noesis_path = self.filepath
         return {'FINISHED'}
 
 class Replicant2BlenderPreferences(bpy.types.AddonPreferences):
