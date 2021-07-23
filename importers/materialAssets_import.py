@@ -1,6 +1,6 @@
 import os
 import subprocess
-
+import binascii
 import bpy
 
 from numpy import uint
@@ -77,6 +77,8 @@ def construct_materials(pack_dir, material_packs):
                 normal_link = links.new(normal_image.outputs['Color'], normalmap_shader.inputs['Color'])
 
 def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
+    failed_texAsset = []
+
     r2b_extracted_path = pack_dir + "\\" + "replicant2blender_extracted"
     converted_path = r2b_extracted_path + "\\" + "converted"
 
@@ -144,7 +146,10 @@ def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
             # DXGI Format
             format = get_DXGI_Format(texHead.header.XonSurfaceFormat)
             if format == None or format == "UNKNOWN":
-                print("Unknown Texture Format Encountered", format)
+                print("Texture extraction failed!")
+                failed_texAsset.append(assetFile)
+                textureFile.close()
+                continue
             else:
                 textureFile.write(uint32_to_bytes(format))
             # D3D10 Resource Dimension
@@ -192,3 +197,5 @@ def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
 
         for p in processes:
             p.wait()
+
+    return failed_texAsset

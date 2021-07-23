@@ -85,3 +85,5 @@ def get_DXGI_Format(surfaceFormat):
 
 	if (surfaceFormat == XonSurfaceDXGIFormat.A8_UNORM):
 		return 65
+
+	return None
