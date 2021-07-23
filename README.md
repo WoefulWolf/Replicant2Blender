@@ -2,7 +2,8 @@
 
 ## CURRENTLY IN ALPHA:
 * Armature/Bones imports aren't perfect (only seems to work on certain models at the moment).
-* Please let me know of any issues (contact me here or on the [NieR:Modding Discord Server](https://discord.gg/7F76ZVv)).
+* Not all DXGI texture formats have been identified yet, so if you find any broken textures or textures failing to extract, please let me know! 
+* Please let me know of any other issues too (contact me here with an issue or on the [NieR:Modding Discord Server](https://discord.gg/7F76ZVv)).
 
 ## What does support right now?
 * Character meshes.
