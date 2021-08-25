@@ -21,7 +21,7 @@ from . import pack_import
 
 class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
     '''Import NieR Replicant Mesh Pack File(s)'''
-    bl_idname = "import.replicant_mesh_pack"
+    bl_idname = "import_scene.replicant_mesh_pack"
     bl_label = "Import File(s)"
     bl_options = {'PRESET', "REGISTER", "UNDO"}
     files : CollectionProperty(
