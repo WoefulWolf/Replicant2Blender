@@ -65,16 +65,38 @@ def construct_materials(pack_dir, material_packs):
 
             elif texture.mapType in ["texNormal", "texNormal0"]:
                 normal_image = nodes.new(type='ShaderNodeTexImage')
-                normal_image.location = 0, -60
+                normal_image.location = -300, -60
                 normal_image.image = bpy.data.images.load(textures_dir + texture_filename)
                 normal_image.image.colorspace_settings.name = 'Non-Color'
                 normal_image.hide = True
 
+                sepRGB_shader = nodes.new(type="ShaderNodeSeparateRGB")
+                sepRGB_shader.location = -30, -60
+                sepRGB_shader.hide = True
+
+                normal_link = links.new(normal_image.outputs['Color'], sepRGB_shader.inputs['Image'])
+
+                invert_shader = nodes.new(type="ShaderNodeInvert")
+                invert_shader.location = 140, -90
+                invert_shader.hide = True
+
+                comRGB_shader = nodes.new(type="ShaderNodeCombineRGB")
+                comRGB_shader.location = 300, -60
+                comRGB_shader.hide = True
+
+                r_link = links.new(sepRGB_shader.outputs['R'], comRGB_shader.inputs['R'])
+                g_link = links.new(sepRGB_shader.outputs['G'], invert_shader.inputs['Color'])
+                b_link = links.new(sepRGB_shader.outputs['B'], comRGB_shader.inputs['B'])
+
+                gInverted_link = links.new(invert_shader.outputs['Color'], comRGB_shader.inputs['G'])
+
                 normalmap_shader = nodes.new(type='ShaderNodeNormalMap')
                 normalmap_shader.location = 600, -60
-                normalmap_link = links.new(normalmap_shader.outputs['Normal'], principled.inputs['Normal'])
                 normalmap_shader.hide = True
-                normal_link = links.new(normal_image.outputs['Color'], normalmap_shader.inputs['Color'])
+                
+                combined_link = links.new(comRGB_shader.outputs['Image'], normalmap_shader.inputs['Color'])
+                normalmap_link = links.new(normalmap_shader.outputs['Normal'], principled.inputs['Normal'])
+                
 
 def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
     failed_texAsset = []

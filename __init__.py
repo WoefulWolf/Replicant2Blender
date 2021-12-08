@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Replicant2Blender (NieR Replicant ver.1.2247... Mesh Pack Importer)",
     "author": "Woeful_Wolf",
-    "version": (0, 3),
+    "version": (0, 4),
     "blender": (2, 92, 0),
     "api": 38019,
     "location": "File > Import",

@@ -23,6 +23,7 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
     packFile.close()
 
     # Import materials + textures
+    failedTexturesAssets = []
     if do_extract_textures or do_construct_materials:
         noesis_path = bpy.context.preferences.addons[addon_name].preferences.noesis_path
         if not os.path.isfile(noesis_path):
@@ -40,7 +41,7 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
                 if os.path.isfile(materialPackFullPath + ".xap"):
                     materialPackFullPath += ".xap"
                 else:
-                    print("[!] Failed to find material PACK file.", materialPackFilename)
+                    print("[!] Failed to find material PACK file:", materialPackFilename)
                     continue
             
             if (materialPackFullPath not in imported_materialPacks):
