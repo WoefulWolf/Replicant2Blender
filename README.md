@@ -1,4 +1,4 @@
-# Replicant2Blender
+![Replicant2Blender](https://i.imgur.com/jbwzCYB.png)
 
 ## CURRENTLY IN ALPHA:
 * Armature/Bones imports aren't perfect (only seems to work on certain models at the moment).
