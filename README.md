@@ -15,6 +15,7 @@
 * Vertex groups.
 * Basic armature (only for certain models).
 * Materials.
+* Extracting textures.
 
 ## Installation Instructions:
 1. Install [Blender](https://www.blender.org/) (also available on Steam).
@@ -24,11 +25,11 @@
 5. Go to the `Add-ons` section and press `Install...` near the top-right.
 6. Select the ZIP you downloaded in step 2 and press `Install Add-on`.
 7. Check the tickbox next to `Import-Export: Replicant2Blender (NieR Replicant ver.1.2247... Mesh Pack Importer)`.
-8. (Optional) If you want automatic texture extraction, conversion & material node setup: open the preferences drop-down for the add-on and set your path to `Noesis.exe` (download if you don't have it yet).
+8. (Optional) If you want texture extraction, conversion & material node setup: open the preferences drop-down for the add-on and set your path to `Noesis.exe` (download if you don't have it yet).
 
 ## Usage:
 * `File > Import > NieR Replicant Mesh Pack`
-* Select a mesh pack (usually prefixed with `msh_`).
+* Select a mesh PACK (usually prefixed with `msh_`) or PACK containing textures (if you wish to extract them).
 * Have fun!
 
 ## How do I get extracted mesh packs?

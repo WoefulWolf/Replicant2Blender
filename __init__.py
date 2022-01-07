@@ -31,13 +31,17 @@ class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
     batch_size: bpy.props.IntProperty(name="Texture Conversion Batch Size", default=15, description="Batch sizes when converting textures. Higher values will be faster but require more CPU resources", min=1)
     extract_textures: bpy.props.BoolProperty(name="Extract Textures (Slow)", description="This automatically extracts and converts textures to PNG (Requires the user to have setup Noesis in this add-on's preferences)", default=True)
     construct_materials: bpy.props.BoolProperty(name="Construct Materials", description="This automatically sets up materials with the appropriate textures (Requires the user to have extracted the textures at least once before)", default=True)
+    only_extract_textures: bpy.props.BoolProperty(name="Only Extract Textures", description="This can be used to simply extract the textures from a PACK containing some, nothing else will be done (Requires the user to have setup Noesis in this add-on's preferences)", default=False)
 
     def execute(self, context):
         directory = self.directory
         for file_elem in self.files:
             filepath = os.path.join(directory, file_elem.name)
             if os.path.isfile(filepath):
-                pack_import.main(filepath, self.extract_textures, self.construct_materials, self.batch_size, __name__)
+                if self.only_extract_textures:
+                    pack_import.only_extract_textures(filepath, self.batch_size, __name__)
+                else:
+                    pack_import.main(filepath, self.extract_textures, self.construct_materials, self.batch_size, __name__)
         pack_import.clear_importLists()
         return {"FINISHED"}
 
@@ -54,6 +58,7 @@ class SelectNoesisExecutable(bpy.types.Operator, ImportHelper):
 
 class Replicant2BlenderPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
+    #noesis_path : StringProperty(default="D:\\Programs\\Noesis\\Noesis.exe", options={'HIDDEN'})
     noesis_path : StringProperty(default="", options={'HIDDEN'})
 
     def draw(self, context):

@@ -90,3 +90,27 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
             print(assetFile.name, "0x"+(texHead.header.XonSurfaceFormat).hex())
     else:
         print('Importing finished. ;)')
+
+def only_extract_textures(packFilePath, batch_size, addon_name):
+    pack_directory = os.path.dirname(os.path.abspath(packFilePath))
+    noesis_path = bpy.context.preferences.addons[addon_name].preferences.noesis_path
+    if not os.path.isfile(noesis_path):
+        print("Noesis path is not set or invalid. Cancelling texture import!")
+        return {"FAILED"}
+
+    packFile = open(packFilePath, "rb")
+    texturePack = Pack(packFile)
+    packFile.close()
+    failedTexturesAssets = extract_textures(pack_directory, [texturePack], noesis_path, batch_size)
+
+    if len(failedTexturesAssets) > 0:
+        print("[!] Some textures failed to extract!")
+        print("Report this issue @ https://github.com/WoefulWolf/Replicant2Blender/issues")
+        print("Please include the unknown formats logged below and the path of the file you were trying to import.")
+        for assetFile in failedTexturesAssets:
+            texHead = assetFile.content.texHead
+            print(assetFile.name, "0x"+(texHead.header.XonSurfaceFormat).hex())
+    else:
+        print('Extraction finished. ;)')
+
+    

@@ -112,7 +112,10 @@ def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
 
     for texturePack in texture_packs:
         print("Extracting textures...")
-        for k, assetFile in enumerate(texturePack.assetFiles):
+        k = 0
+        for assetFile in texturePack.assetFiles:
+            if ".rtex" not in assetFile.name:
+                continue
             texHead = assetFile.content.texHead
             assetPackName = assetFile.name.replace(".rtex", "")
             textureFilename = assetPackName + ".dds"
@@ -168,7 +171,7 @@ def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
             # DXGI Format
             format = get_DXGI_Format(texHead.header.XonSurfaceFormat)
             if format == None or format == "UNKNOWN":
-                print("Texture extraction failed!")
+                print("Texture extraction failed!", assetFile.name)
                 failed_texAsset.append(assetFile)
                 textureFile.close()
                 continue
@@ -186,12 +189,15 @@ def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
             # TextureData
             textureFile.write(texturePack.texData[k].data)
             textureFile.close()
+            k += 1
 
     # Noesis Converting
     argPrograms = []
     for texturePack in texture_packs:
         print("Batch converting textures from", texturePack.assetPacks[0].name, "with Noesis...")
         for assetFile in texturePack.assetFiles:
+            if ".rtex" not in assetFile.name:
+                continue
             texHead = assetFile.content.texHead
             assetPackName = assetFile.name.replace(".rtex", "")
             textureFilename = assetPackName + ".dds"
