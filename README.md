@@ -1,7 +1,6 @@
 ![Replicant2Blender](https://i.imgur.com/jbwzCYB.png)
 
 ## CURRENTLY IN ALPHA:
-* Armature/Bones imports aren't perfect (only seems to work on certain models at the moment).
 * Not all DXGI texture formats have been identified yet, so if you find any broken textures or textures failing to extract, please let me know! 
 * Please let me know of any other issues too (contact me here with an issue or on the [NieR:Modding Discord Server](https://discord.gg/7F76ZVv)).
 
@@ -13,7 +12,7 @@
 * Automatic texture extraction, conversion & material node setup (make sure you have Noesis path set in Add-on Preferences).
 * Multiple UV maps.
 * Vertex groups.
-* Basic armature (only for certain models).
+* Armatures.
 * Materials.
 * Extracting textures.
 

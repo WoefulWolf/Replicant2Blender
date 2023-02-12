@@ -1,6 +1,6 @@
-from mathutils import Vector, Matrix
+from mathutils import Vector, Matrix, Quaternion
 import bpy, bmesh, numpy, math
-
+from operator import add
 
 def get_meshAssetFiles(pack):
     meshAssetFiles = []
@@ -24,18 +24,21 @@ def construct_meshes(pack):
             meshCollection.objects.link(amtObj)
             bpy.context.view_layer.objects.active = amtObj
             bpy.ops.object.mode_set(mode="EDIT")
-            for k, boneData in enumerate(meshAsset.content.meshHead.bonesData):
-                tailVector = numpy.matmul(boneData.unknownMatrix0, [boneData.length, 0, 0, 1])
-                newBone = amt.edit_bones.new(boneData.name)
-                newBone.head = [tailVector[0], tailVector[1]-0.05, tailVector[2]]
-                newBone.tail = [tailVector[0], tailVector[1], tailVector[2]]
-                if k == 0:
-                    newBone.head = [0, tailVector[1]-0.05, tailVector[2]]
-                    newBone.tail = [0, tailVector[1], tailVector[2]]
+            for k, bone in enumerate(meshAsset.content.meshHead.bonesData):
+                transform = Matrix(bone.unknownMatrix0)
 
-            bpy.ops.object.mode_set(mode='OBJECT')
-
-            bpy.ops.object.mode_set(mode="EDIT")
+                if (bone.unknownParentIndex == -1):
+                    head = transform @ Vector((0, 0, 0, 1))
+                    tail = transform @ Vector((bone.length, 0, 0, 1))
+                else:
+                    head = Vector((0, 0, 0))
+                    tail = Vector((0, 0.05, 0))
+                newBone = amt.edit_bones.new(bone.name)
+                newBone.head = [head.x, head.y, head.z]
+                newBone.tail = [tail.x, tail.y, tail.z]
+                #newBone.roll = 90
+                #newBone.parent = amt.edit_bones[meshAsset.content.meshHead.bones[bone.parentBoneIndex].name] if bone.parentBoneIndex != -1 else None
+            
             safeBones = []
             for bone in meshAsset.content.meshHead.bonesData:
                 safeBones.append(bone.name)
@@ -46,8 +49,19 @@ def construct_meshes(pack):
                         parentName = meshAsset.content.meshHead.bones[bone.parentBoneIndex].name
                         if parentName in safeBones:
                             edit_bone.parent = amt.edit_bones[parentName]
-                            edit_bone.head = edit_bone.parent.tail
                         break
+
+            bpy.ops.object.mode_set(mode='POSE')
+            for pose_bone in amtObj.pose.bones:
+                for bone in meshAsset.content.meshHead.bonesData:
+                    if bone.name == pose_bone.name:
+                        if bone.unknownParentIndex != -1:
+                            transformMat = Matrix(bone.unknownMatrix0)
+                            pose_bone.matrix_basis = transformMat @ pose_bone.matrix_basis
+                        break
+            bpy.context.view_layer.update()
+            bpy.ops.pose.armature_apply()
+            
             bpy.ops.object.mode_set(mode='OBJECT')
             amtObj.rotation_euler = (math.radians(90),0,0)
 
@@ -57,30 +71,29 @@ def construct_meshes(pack):
             faces = pack.meshData[i].objectGroupIndices[k].indices
             weights = pack.meshData[i].objectGroupVertices[k].vertexWeights
             boneIndices = pack.meshData[i].objectGroupVertices[k].vertexBoneIndices
-
-            """
+            
             normals = []
             for m in range(len(vertices)):
                 nx = pack.meshData[i].objectGroupVertices[k].vertexNormals[m][0] / 127
                 ny = pack.meshData[i].objectGroupVertices[k].vertexNormals[m][1] / 127
                 nz = pack.meshData[i].objectGroupVertices[k].vertexNormals[m][2] / 127
-                normals.append([nz, ny, nx])
-            """
+                normals.append([nx, ny, nz])
+            
 
             objName = meshAsset.name + str(k)
 
             bObjMesh = bpy.data.meshes.new(objName)
             bObj = bpy.data.objects.new(objName, bObjMesh)
 
-            #bObj.data.use_auto_smooth = True
+            bObj.data.use_auto_smooth = True
 
             meshCollection.objects.link(bObj)
             bObjMesh.from_pydata(vertices, [], faces)
-            #bObjMesh.normals_split_custom_set_from_vertices(normals)
+            bObjMesh.normals_split_custom_set_from_vertices(normals)
             bObjMesh.update(calc_edges=True)
 
-            for poly in bObj.data.polygons:
-                poly.use_smooth = True
+            #for poly in bObj.data.polygons:
+            #    poly.use_smooth = True
 
             # Create/Add Materials
             for m, material in enumerate(meshAsset.content.meshHead.materials):
