@@ -36,27 +36,30 @@ class Pack:
         
         print(" - Pack AssetPacks:")
         packFile.seek(offsetAssetPacks)
-        self.assetPacks = []
+        self.assetPacks: list[AssetPack] = []
         for i in range(self.assetPackCount):
             self.assetPacks.append(AssetPack(packFile))
 
         print(" - Pack Files:")
         packFile.seek(offsetFiles)
-        self.assetFiles = []
+        self.assetFiles: list[File] = []
         for i in range(self.fileCount):
             self.assetFiles.append(File(packFile))
 
         packFile.seek(self.packFileSerializedSize)
         self.meshData = []
         self.texData = []
+        self.levelData: list[LevelData] = []
         for assetFile in self.assetFiles:
-            if (assetFile.content == None or assetFile.content.fileTypeName not in ["tpGxMeshHead", "tpGxTexHead"]):
+            if (assetFile.content == None or assetFile.content.fileTypeName not in ["tpGxMeshHead", "tpGxTexHead", "LevelData"]):
                 continue
 
             if (assetFile.content.fileTypeName == "tpGxMeshHead"):
                 self.meshData.append(tpGxMeshData(packFile, assetFile.content.meshHead))
             elif (assetFile.content.fileTypeName == "tpGxTexHead"):
                 self.texData.append(tpGxTexData(packFile, assetFile.content.texHead))
+            elif (assetFile.content.fileTypeName == "LevelData"):
+                self.levelData.append(assetFile.content.levelData)
 
             if ((packFile.tell() - self.packFileSerializedSize) % 32 != 0):
                 alignRelative(packFile, self.packFileSerializedSize, 32)

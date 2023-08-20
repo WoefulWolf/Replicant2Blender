@@ -1,4 +1,6 @@
 import bpy, os
+
+from .importers.levelData_import import importLevelData
 from .classes.pack import *
 from .importers.meshAsset_import import construct_meshes
 from .importers.materialAssets_import import construct_materials, extract_textures
@@ -15,12 +17,12 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
     pack_directory = os.path.dirname(os.path.abspath(packFilePath))
 
     # meshPack
-    packFile = open(packFilePath, "rb")
     print("Parsing Mesh PACK file...", packFilePath)
-    meshPack = Pack(packFile)
+    with open(packFilePath, "rb") as packFile:
+        meshPack = Pack(packFile)
     print("\nConstructing Blender Objects...")
     construct_meshes(meshPack)
-    packFile.close()
+    importLevelData(meshPack.levelData)
 
     # Import materials + textures
     failedTexturesAssets = []
@@ -47,9 +49,8 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
             if (materialPackFullPath not in imported_materialPacks):
                 imported_materialPacks.append(materialPackFullPath)
                 print("Parsing Material PACK file...", path.path)
-                packFile = open(materialPackFullPath, "rb")
-                materialPacks.append(Pack(packFile))
-                packFile.close()
+                with open(materialPackFullPath, "rb") as packFile:
+                    materialPacks.append(Pack(packFile))
 
         #texturePacks
         texturePacks = []
@@ -71,9 +72,8 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
                 if (texturePackFullPath not in imported_texturePacks):
                     imported_texturePacks.append(texturePackFullPath)
                     print("Parsing Texture PACK file...", path.path)
-                    packFile = open(texturePackFullPath, "rb")
-                    texturePacks.append(Pack(packFile))
-                    packFile.close()
+                    with open(texturePackFullPath, "rb") as packFile:
+                        texturePacks.append(Pack(packFile))
 
         if do_extract_textures:
             failedTexturesAssets = extract_textures(pack_directory, texturePacks, noesis_path, batch_size)
