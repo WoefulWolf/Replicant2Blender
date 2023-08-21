@@ -22,7 +22,7 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
         meshPack = Pack(packFile)
     print("\nConstructing Blender Objects...")
     construct_meshes(meshPack)
-    importLevelData(meshPack.levelData)
+    importLevelData(meshPack.levelData, addon_name)
 
     # Import materials + textures
     failedTexturesAssets = []

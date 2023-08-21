@@ -77,6 +77,7 @@ class SelectNoesisExecutable(bpy.types.Operator, ImportHelper):
 class Replicant2BlenderPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
     #noesis_path : StringProperty(default="D:\\Programs\\Noesis\\Noesis.exe", options={'HIDDEN'})
+    noesis_path : StringProperty(options={'HIDDEN'})
     assets_path : StringProperty(options={'HIDDEN'})
 
     def draw(self, context):
