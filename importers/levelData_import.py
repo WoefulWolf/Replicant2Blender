@@ -88,7 +88,7 @@ def linkAssetModel(assetPath: str, addonName: str) -> bpy.types.Collection | Non
     assetsRootDir = prefs.assets_path
 
     assetName = os.path.basename(assetPath)
-    assetCollName = os.path.basename(assetPath) + "_asset"
+    assetCollName = assetName
 
     # link file for first object
     if assetCollName not in bpy.data.collections:

@@ -94,6 +94,7 @@ class LDEntry:
     objects: list[LDObject]
 
     def __init__(self, packFile: BinaryIO):
+        returnPos = packFile.tell() + 12
         skip(packFile, 4)
 
         # entryCount = to_uint(packFile.read(4))
@@ -108,6 +109,8 @@ class LDEntry:
         self.objects = []
         for i in range(entryCount):
             self.objects.append(LDObject(packFile))
+
+        packFile.seek(returnPos)
 
 
 class LevelData:
