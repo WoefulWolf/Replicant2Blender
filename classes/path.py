@@ -2,7 +2,7 @@ from ..util import *
 
 class Path:
     def __init__(self, packFile):
-        self.hash = packFile.read(4)
+        self.magic = packFile.read(4)
 
         self.offsetToPath = to_int(packFile.read(4))
         offsetPath = packFile.tell() + self.offsetToPath - 4

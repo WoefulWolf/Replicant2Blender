@@ -9,7 +9,7 @@ from .tpGxTexData import tpGxTexData
 
 class Pack:
     def __init__(self, packFile):
-        self.id = packFile.read(4)
+        self.magic = packFile.read(4)
         self.version = to_uint(packFile.read(4))
 
         self.packFileTotalSize = to_uint(packFile.read(4))
@@ -50,7 +50,9 @@ class Pack:
         self.meshData = []
         self.texData = []
         for assetFile in self.assetFiles:
-            if (assetFile.content == None or assetFile.content.fileTypeName not in ["tpGxMeshHead", "tpGxTexHead"]):
+            if (assetFile.content == None
+                or assetFile.content.magic != b"BXON"
+                or assetFile.content.fileTypeName not in ["tpGxMeshHead", "tpGxTexHead"]):
                 continue
 
             if (assetFile.content.fileTypeName == "tpGxMeshHead"):
