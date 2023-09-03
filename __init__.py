@@ -16,7 +16,8 @@ import os
 from bpy_extras.io_utils import ExportHelper,ImportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty, CollectionProperty
 from bpy.types import Operator, OperatorFileListElement
-from . import pack_import
+from . import mesh_pack_import
+from . import motion_pack_import
 
 
 class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
@@ -39,10 +40,28 @@ class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
             filepath = os.path.join(directory, file_elem.name)
             if os.path.isfile(filepath):
                 if self.only_extract_textures:
-                    pack_import.only_extract_textures(filepath, self.batch_size, __name__)
+                    mesh_pack_import.only_extract_textures(filepath, self.batch_size, __name__)
                 else:
-                    pack_import.main(filepath, self.extract_textures, self.construct_materials, self.batch_size, __name__)
-        pack_import.clear_importLists()
+                    mesh_pack_import.main(filepath, self.extract_textures, self.construct_materials, self.batch_size, __name__)
+        mesh_pack_import.clear_importLists()
+        return {"FINISHED"}
+    
+class ImportReplicantMotionPack(bpy.types.Operator, ImportHelper):
+    '''Import NieR Replicant Motion Pack File(s)'''
+    bl_idname = "import_scene.replicant_motion_pack"
+    bl_label = "Import File(s)"
+    bl_options = {'PRESET', "REGISTER", "UNDO"}
+    files : CollectionProperty(
+            name="File Path",
+            type=OperatorFileListElement)
+    directory: StringProperty(subtype='DIR_PATH')
+
+    def execute(self, context):
+        directory = self.directory
+        for file_elem in self.files:
+            filepath = os.path.join(directory, file_elem.name)
+            if os.path.isfile(filepath):
+                motion_pack_import.main(filepath, __name__)
         return {"FINISHED"}
 
 class SelectNoesisExecutable(bpy.types.Operator, ImportHelper):
@@ -78,16 +97,23 @@ class Replicant2BlenderPreferences(bpy.types.AddonPreferences):
 def replicant_import_mesh_pack(self, context):
     self.layout.operator(ImportReplicantMeshPack.bl_idname, text="NieR Replicant Mesh Pack(s)")
 
+def replicant_import_motion_pack(self, context):
+    self.layout.operator(ImportReplicantMotionPack.bl_idname, text="NieR Replicant Motion Pack(s)")
+
 def register():
     bpy.utils.register_class(ImportReplicantMeshPack)
+    bpy.utils.register_class(ImportReplicantMotionPack)
     bpy.utils.register_class(SelectNoesisExecutable)
     bpy.types.TOPBAR_MT_file_import.append(replicant_import_mesh_pack)
+    bpy.types.TOPBAR_MT_file_import.append(replicant_import_motion_pack)
     bpy.utils.register_class(Replicant2BlenderPreferences)
 
 def unregister():
     bpy.utils.unregister_class(ImportReplicantMeshPack)
+    bpy.utils.unregister_class(ImportReplicantMotionPack)
     bpy.utils.unregister_class(SelectNoesisExecutable)
     bpy.types.TOPBAR_MT_file_import.remove(replicant_import_mesh_pack)
+    bpy.types.TOPBAR_MT_file_import.remove(replicant_import_motion_pack)
     bpy.utils.unregister_class(Replicant2BlenderPreferences)
 
 if __name__ == '__main__':
