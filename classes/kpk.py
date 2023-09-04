@@ -23,7 +23,7 @@ class KPK:
             magic = packFile.read(4)
             packFile.seek(-4, 1)
 
-            if (magic == b"CMF\x01"):
+            if (magic in [b"CMF\x01", b"CMF\x03"]):
                 self.files.append(CMF(packFile))
             else:
                 print("Unknown file type:", magic)

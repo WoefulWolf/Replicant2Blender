@@ -1,13 +1,62 @@
+import bpy, math
+
 def get_cmfFiles(pack):
     cmfFiles = []
     for assetFile in pack.assetFiles:
         for file in assetFile.content.files:
-            if (file.magic == b"CMF\x01"):
+            if (file.magic in [b"CMF\x01", b"CMF\x03"]):
                 cmfFiles.append(file)
     return cmfFiles
 
 def import_motions(pack):
     cmfFiles = get_cmfFiles(pack)
 
-    for file in cmfFiles:
-        print(" -", file.name)
+    # Get active armature object
+    armature = bpy.context.active_object
+    if armature.type != 'ARMATURE':
+        raise Exception("Active object is not an armature")
+
+    for cmf in cmfFiles:
+        # Print CMF name
+        print(" -", cmf.name)
+
+        # Check if the action already exists, then remove it
+        if cmf.name in bpy.data.actions:
+            bpy.data.actions.remove(bpy.data.actions[cmf.name])
+
+        # Create new action
+        action = bpy.data.actions.new(cmf.name)
+
+        # Check if object has animation_data, if not, add it
+        if not armature.animation_data:
+            armature.animation_data_create()
+
+        # Assign action to armature
+        armature.animation_data.action = action
+
+        # Compare cmf bone count with armature bone count
+        cmf_boneCount = cmf.boneCount
+        armature_boneCount = len(armature.data.bones)
+        
+        # For each bone transformation frames
+        for i, transData in enumerate(cmf.framesTransData.transformations):
+            if transData == None:
+                continue
+            
+            # Get pose bone
+            poseBone = armature.pose.bones[i]
+            # Clear any rotation on the bone
+            poseBone.rotation_euler = (0, 0, 0)
+            # Clear any location on the bone
+            poseBone.location = (0, 0, 0)
+            # Clear any scale on the bone
+            poseBone.scale = (1, 1, 1)
+            # Set rotation mode to euler
+            poseBone.rotation_mode = 'XYZ'
+
+            for frame_index, rot_value in zip(transData.indices, transData.values):
+                # Swap Y and Z axis
+                rot_value = [rot_value[0], -rot_value[2], rot_value[1]] # Maybe comment this out I dunnno
+                poseBone.rotation_euler = rot_value
+                # Insert keyframe
+                poseBone.keyframe_insert(data_path="rotation_euler", frame=frame_index)

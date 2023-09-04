@@ -68,6 +68,7 @@ class CMF:
         null = packFile.read(4)
         if (packFile.tell() + 4 <= basePos + self.framesInterpOffset):
             self.boneNamesOffset = to_uint(packFile.read(4))
+            print("CMF contains bone names!")
 
         packFile.seek(basePos + self.framesInterpOffset)
         self.framesInterpData = frameInterpolationData(packFile, self.boneCount)
