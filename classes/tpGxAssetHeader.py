@@ -27,6 +27,8 @@ class UnknownAsset:
         packFile.seek(self.offsetUnknownHash)
         self.unknownHash = packFile.read(4)
         self.unknownFlag = to_uint(packFile.read(4))
+        
+        self.textures = []
 
         if (self.unknownFlag == 0):
             return
@@ -55,10 +57,16 @@ class UnknownAsset:
         self.unknownUInt32_1 = to_uint(packFile.read(4))
         self.unknownShort = to_ushort(packFile.read(2))
 
+        fileSize = packFile.seek(0, os.SEEK_END)
         packFile.seek(self.offsetMaterialParams)
         self.materialParamHeaders = []
         for i in range(self.numMaterialParams):
-            self.materialParamHeaders.append(MaterialParamsHeader(packFile))
+            paramHeader = MaterialParamsHeader(packFile)
+            if paramHeader.offsetParameters > fileSize:
+                print("[-] Material parameter offset exceeds file size!")
+                print("[-] Stopping parsing of material parameters.")
+                break
+            self.materialParamHeaders.append(paramHeader)
 
         for materialParamHeader in self.materialParamHeaders:
             packFile.seek(materialParamHeader.offsetParameters)
@@ -67,14 +75,23 @@ class UnknownAsset:
                 self.parameters.append(MaterialParameter(packFile))
 
         packFile.seek(self.offsetTextures)
-        self.textures = []
         for i in range(self.numTextures):
-            self.textures.append(Texture(packFile))
+            texture = Texture(packFile)
+            if texture.offsetFileName > fileSize:
+                print("[-] Texture filename offset exceeds file size!")
+                print("[-] Stopping parsing of texture filenames.")
+                break
+            self.textures.append(texture)
 
         packFile.seek(self.offsetTPVars)
         self.tpVars = []
         for i in range(self.numTPVars):
-            self.tpVars.append(TPVar(packFile))
+            tpVar = TPVar(packFile)
+            if tpVar.offsetName > fileSize:
+                print("[-] TPVar name offset exceeds file size!")
+                print("[-] Stopping parsing of TPVar names.")
+                break
+            self.tpVars.append(tpVar)
 
 
 class MaterialParamsHeader:

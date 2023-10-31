@@ -146,7 +146,7 @@ def construct_meshes(pack):
                     continue
                 matFaces = faces[matObjects.indicesStart//3:matObjects.indicesStart//3 + matObjects.indicesCount//3]
                 for matFace in matFaces:
-                    if (bm.verts[matFace[0]] != bm.verts[matFace[1]] != bm.verts[matFace[2]]):
+                    if (bm.verts[matFace[0]] != bm.verts[matFace[1]] and bm.verts[matFace[0]] != bm.verts[matFace[2]] and bm.verts[matFace[1]] != bm.verts[matFace[2]]):
                         face = bm.faces.get([bm.verts[matFace[0]], bm.verts[matFace[1]], bm.verts[matFace[2]]]).material_index = matObjects.materialIndex
 
             bpy.ops.object.mode_set(mode='OBJECT')

@@ -1,3 +1,4 @@
+from .levelData import LevelData
 from ..util import *
 from .tpGxAssetHeader import tpGxAssetHeader
 from .tpGxMeshHead import tpGxMeshHead
@@ -26,6 +27,8 @@ class BXON:
             self.meshHead = tpGxMeshHead(packFile)
         elif (self.fileTypeName == "tpGxTexHead"):
             self.texHead = tpGxTexHead(packFile)
+        elif (self.fileTypeName == "LevelData"):
+            self.levelData = LevelData(packFile)
 
         packFile.seek(returnPos)
 
