@@ -2,6 +2,7 @@
 import os
 import sys
 import struct
+from typing import Tuple
 import numpy as np
 import math
 from enum import Enum
@@ -37,10 +38,10 @@ def uint32_to_bytes(var):
 def int32_to_bytes(var):
 	return var.to_bytes(4, byteorder='little', signed=True)
 
-def readFloatX3(f) -> tuple[float, float, float]:
+def readFloatX3(f) -> Tuple[float, float, float]:
 	return struct.unpack("<fff", f.read(12))
 
-def readFloatX4(f) -> tuple[float, float, float, float]:
+def readFloatX4(f) -> Tuple[float, float, float, float]:
 	return struct.unpack("<ffff", f.read(16))
 
 def readString(f) -> str:

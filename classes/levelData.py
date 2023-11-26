@@ -1,4 +1,4 @@
-from typing import BinaryIO
+from typing import BinaryIO, List, Optional
 import os
 
 from ..util import readFloatX4, readString, to_float, to_string, to_uint, readFloatX3
@@ -65,9 +65,9 @@ class LDUnknEntry18:
         ...
 
 class LDObject:
-    meshEntry: LDMeshEntry|None
-    unknEntry18: LDUnknEntry18|None
-    unknEntry10: LDUnknEntry10|None
+    meshEntry: Optional[LDMeshEntry]
+    unknEntry18: Optional[LDUnknEntry18]
+    unknEntry10: Optional[LDUnknEntry10]
 
     def __init__(self, packFile: BinaryIO):
         returnPos = packFile.tell() + 4
@@ -91,7 +91,7 @@ class LDObject:
         packFile.seek(returnPos)
 
 class LDEntry:
-    objects: list[LDObject]
+    objects: List[LDObject]
 
     def __init__(self, packFile: BinaryIO):
         returnPos = packFile.tell() + 12
@@ -114,7 +114,7 @@ class LDEntry:
 
 
 class LevelData:
-    entries: list[LDEntry]
+    entries: List[LDEntry]
 
     def __init__(self, packFile: BinaryIO):
         # header = packFile.read(18)

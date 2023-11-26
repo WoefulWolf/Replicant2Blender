@@ -1,10 +1,13 @@
+from math import sqrt, radians
 import os
+from typing import List, Optional, Tuple
 import bpy
+from mathutils import Euler, Quaternion
 
 from ..classes.levelData import LDMeshEntry, LDUnknEntry10, LDUnknEntry18, LevelData
 
 
-def importLevelData(levelDataList: list[LevelData], addonName: str):
+def importLevelData(levelDataList: List[LevelData], addonName: str):
     if len(levelDataList) > 0:
         print("Importing LevelData...")
     else:
@@ -59,17 +62,17 @@ def importLdUnknEntry18(unknEntry18: LDUnknEntry18, collection: bpy.types.Collec
         addonName
     )
 
-def transformCoords(coords: tuple[float, float, float], invertY = -1):
+def transformCoords(coords: Tuple[float, float, float], invertY = -1):
     return (coords[0], invertY * coords[2], coords[1])
 
 def makeObj(
-    pos: tuple[float, float, float],
-    rot: tuple[float, float, float, float],
+    pos: Tuple[float, float, float],
+    rot: Tuple[float, float, float, float],
     scale: float,
     name: str,
     collection: bpy.types.Collection,
     addonName: str,
-    assetPath: str|None = None,
+    assetPath: Optional[str] = None,
 ):
     obj = bpy.data.objects.new(name, None)
     collection.objects.link(obj)
@@ -83,7 +86,7 @@ def makeObj(
             obj.instance_type = "COLLECTION"
     return obj
 
-def linkAssetModel(assetPath: str, addonName: str) -> bpy.types.Collection | None:
+def linkAssetModel(assetPath: str, addonName: str) -> Optional[bpy.types.Collection]:
     prefs = bpy.context.preferences.addons[addonName].preferences
     assetsRootDir = prefs.assets_path
 
