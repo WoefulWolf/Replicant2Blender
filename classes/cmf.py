@@ -1,6 +1,6 @@
 from ..util import *
 
-class frameInterpolation:
+class frameTransformation1:
     def __init__(self, packFile):
         self.frameCount = to_ushort(packFile.read(2))
         self.indices = [to_ushort(packFile.read(2)) for i in range(self.frameCount)]
@@ -8,34 +8,9 @@ class frameInterpolation:
         if align != 4:
             packFile.read(align)
 
-        self.values = [[to_float(packFile.read(4)) for j in range(2)] for i in range(self.frameCount)]
+        self.values = [[(to_int(packFile.read(2))/0x7FFF) for j in range(4)] for i in range(self.frameCount)]
 
-class frameInterpolationData:
-    def __init__(self, packFile, boneCount):
-        basePos = packFile.tell()
-
-        self.offsets = [to_uint(packFile.read(4)) for i in range(boneCount)]
-
-        self.interpolations = []
-        for i in range(boneCount):
-            if self.offsets[i] == 0:
-                self.interpolations.append(None)
-                continue
-            else:
-                packFile.seek(basePos + self.offsets[i])
-                self.interpolations.append(frameInterpolation(packFile))
-
-class frameTransformation:
-    def __init__(self, packFile):
-        self.frameCount = to_ushort(packFile.read(2))
-        self.indices = [to_ushort(packFile.read(2)) for i in range(self.frameCount)]
-        align = 4 - (packFile.tell() % 4)
-        if align != 4:
-            packFile.seek(align, 1)
-
-        self.values = [[to_float(packFile.read(4)) for j in range(3)] for i in range(self.frameCount)]
-
-class frameTransformationData:
+class frameTransformationData1:
     def __init__(self, packFile, boneCount):
         basePos = packFile.tell()
 
@@ -48,7 +23,32 @@ class frameTransformationData:
                 continue
             else:
                 packFile.seek(basePos + self.offsets[i])
-                self.transformations.append(frameTransformation(packFile))
+                self.transformations.append(frameTransformation1(packFile))
+
+class frameTransformation2:
+    def __init__(self, packFile):
+        self.frameCount = to_ushort(packFile.read(2))
+        self.indices = [to_ushort(packFile.read(2)) for i in range(self.frameCount)]
+        align = 4 - (packFile.tell() % 4)
+        if align != 4:
+            packFile.seek(align, 1)
+
+        self.values = [[to_float(packFile.read(4)) for j in range(3)] for i in range(self.frameCount)]
+
+class frameTransformationData2:
+    def __init__(self, packFile, boneCount):
+        basePos = packFile.tell()
+
+        self.offsets = [to_uint(packFile.read(4)) for i in range(boneCount)]
+
+        self.transformations = []
+        for i in range(boneCount):
+            if self.offsets[i] == 0:
+                self.transformations.append(None)
+                continue
+            else:
+                packFile.seek(basePos + self.offsets[i])
+                self.transformations.append(frameTransformation2(packFile))
 
 class CMF:
     def __init__(self, packFile):
@@ -60,8 +60,8 @@ class CMF:
         self.u2 = to_uint(packFile.read(4))
         self.name = to_string(packFile.read(64))
         padding = packFile.read(32)
-        self.pos = [to_float(packFile.read(4)) for i in range(3)]
         self.rot = [to_float(packFile.read(4)) for i in range(4)]
+        self.pos = [to_float(packFile.read(4)) for i in range(3)]
         self.scale = [to_float(packFile.read(4)) for i in range(3)]
         self.framesInterpOffset = to_uint(packFile.read(4))
         self.framesTransOffset = to_uint(packFile.read(4))
@@ -71,8 +71,8 @@ class CMF:
             print("CMF contains bone names!")
 
         packFile.seek(basePos + self.framesInterpOffset)
-        self.framesInterpData = frameInterpolationData(packFile, self.boneCount)
+        self.framesTransData1 = frameTransformationData1(packFile, self.boneCount)
 
         packFile.seek(basePos + self.framesTransOffset)
-        self.framesTransData = frameTransformationData(packFile, self.boneCount)
+        self.framesTransData2 = frameTransformationData2(packFile, self.boneCount)
         
