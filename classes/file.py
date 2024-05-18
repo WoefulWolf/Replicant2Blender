@@ -1,10 +1,9 @@
 from ..util import *
 from .bxon import *
-from .kpk import *
 
 class File:
     def __init__(self, packFile):
-        self.magic = packFile.read(4)
+        self.hash = packFile.read(4)
 
         self.offsetToName = to_int(packFile.read(4))
         offsetName = packFile.tell() + self.offsetToName - 4
@@ -26,8 +25,6 @@ class File:
         packFile.seek(-4, 1)
         if (fileID == b"BXON"):
             self.content = BXON(packFile)
-        elif (fileID == b"KPK\x7F"):
-            self.content = KPK(packFile)
         else:
             self.content = None
         
