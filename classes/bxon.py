@@ -6,7 +6,7 @@ from .tpGxTexHead import tpGxTexHead
 
 class BXON:
     def __init__(self, packFile):
-        self.id = packFile.read(4)
+        self.magic = packFile.read(4)
         self.version = to_int(packFile.read(4))
         self.projectID = to_int(packFile.read(4))
 

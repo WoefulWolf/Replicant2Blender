@@ -9,7 +9,7 @@ from .tpGxTexData import tpGxTexData
 
 class Pack:
     def __init__(self, packFile):
-        self.id = packFile.read(4)
+        self.magic = packFile.read(4)
         self.version = to_uint(packFile.read(4))
 
         self.packFileTotalSize = to_uint(packFile.read(4))
