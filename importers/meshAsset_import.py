@@ -86,7 +86,8 @@ def construct_meshes(pack):
             bObj = bpy.data.objects.new(objName, bObjMesh)
 
             # Removed in 4.1
-            # bObj.data.use_auto_smooth = True
+            if bpy.app.version < (4, 1, 0):
+                bObj.data.use_auto_smooth = True
 
             meshCollection.objects.link(bObj)
             bObjMesh.from_pydata(vertices, [], faces)

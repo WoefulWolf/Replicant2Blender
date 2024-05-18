@@ -52,7 +52,7 @@ class Pack:
         self.levelData: list[LevelData] = []
         for assetFile in self.assetFiles:
             if (assetFile.content == None
-                or assetFile.content.magic != b"BXON"
+                or assetFile.content.id != b"BXON"
                 or assetFile.content.fileTypeName not in ["tpGxMeshHead", "tpGxTexHead", "LevelData"]):
                 continue
 
