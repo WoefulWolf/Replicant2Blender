@@ -1,8 +1,8 @@
 bl_info = {
     "name": "Replicant2Blender (NieR Replicant ver.1.2247... Mesh Pack Importer)",
     "author": "Woeful_Wolf",
-    "version": (0, 4),
-    "blender": (2, 92, 0),
+    "version": (0, 5),
+    "blender": (4, 1, 0),
     "api": 38019,
     "location": "File > Import",
     "description": "Import NieR Replicant Mesh Pack",
@@ -32,34 +32,16 @@ class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
     extract_textures: bpy.props.BoolProperty(name="Extract Textures (Slow)", description="This automatically extracts and converts textures to PNG (Requires the user to have setup Noesis in this add-on's preferences)", default=True)
     construct_materials: bpy.props.BoolProperty(name="Construct Materials", description="This automatically sets up materials with the appropriate textures (Requires the user to have extracted the textures at least once before)", default=True)
     only_extract_textures: bpy.props.BoolProperty(name="Only Extract Textures", description="This can be used to simply extract the textures from a PACK containing some, nothing else will be done (Requires the user to have setup Noesis in this add-on's preferences)", default=False)
-    all_meshes_in_folder: bpy.props.BoolProperty(name="All Meshes In Folder", description="This can be used to import all PACK files in the same folder as the selected file", default=False)
-    all_meshes_in_folder_recursive: bpy.props.BoolProperty(name="All Meshes In Folder (Recursive)", description="This can be used to import all PACK files in the same folder as the selected file, and all PACK files in subfolders", default=False)
 
     def execute(self, context):
-        def importFile(filepath):
+        directory = self.directory
+        for file_elem in self.files:
+            filepath = os.path.join(directory, file_elem.name)
             if os.path.isfile(filepath):
                 if self.only_extract_textures:
                     pack_import.only_extract_textures(filepath, self.batch_size, __name__)
                 else:
                     pack_import.main(filepath, self.extract_textures, self.construct_materials, self.batch_size, __name__)
-        directory = self.directory
-        if self.all_meshes_in_folder:
-            for file in os.listdir(directory):
-                if not file.startswith("msh_"):
-                    continue
-                filepath = os.path.join(directory, file)
-                importFile(filepath)
-        elif self.all_meshes_in_folder_recursive:
-            for root, dirs, files in os.walk(directory):
-                for file in files:
-                    if not file.startswith("msh_"):
-                        continue
-                    filepath = os.path.join(root, file)
-                    importFile(filepath)
-        else:
-            for file_elem in self.files:
-                filepath = os.path.join(directory, file_elem.name)
-                importFile(filepath)
         pack_import.clear_importLists()
         return {"FINISHED"}
 
