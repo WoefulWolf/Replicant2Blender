@@ -85,7 +85,8 @@ def construct_meshes(pack):
             bObjMesh = bpy.data.meshes.new(objName)
             bObj = bpy.data.objects.new(objName, bObjMesh)
 
-            bObj.data.use_auto_smooth = True
+            # Removed in 4.1
+            # bObj.data.use_auto_smooth = True
 
             meshCollection.objects.link(bObj)
             bObjMesh.from_pydata(vertices, [], faces)
@@ -108,6 +109,12 @@ def construct_meshes(pack):
 
             # Assign weights
             for m, weight in enumerate(weights):
+                # Filter out any floating point issues
+                for n, val in enumerate(weight):
+                    if (val < 0.000001):
+                        weight[n] = 0
+                weight = [float(n)/sum(weight) for n in weight]
+
                 vertexGroups = []
                 vertexBoneIndices = boneIndices[m]
                 if (len(weight) == 4):
@@ -146,7 +153,7 @@ def construct_meshes(pack):
                     continue
                 matFaces = faces[matObjects.indicesStart//3:matObjects.indicesStart//3 + matObjects.indicesCount//3]
                 for matFace in matFaces:
-                    if (bm.verts[matFace[0]] != bm.verts[matFace[1]] != bm.verts[matFace[2]]):
+                    if (bm.verts[matFace[0]] != bm.verts[matFace[1]] and bm.verts[matFace[0]] != bm.verts[matFace[2]] and bm.verts[matFace[1]] != bm.verts[matFace[2]]):
                         face = bm.faces.get([bm.verts[matFace[0]], bm.verts[matFace[1]], bm.verts[matFace[2]]]).material_index = matObjects.materialIndex
 
             bpy.ops.object.mode_set(mode='OBJECT')

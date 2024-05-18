@@ -1,8 +1,8 @@
 bl_info = {
     "name": "Replicant2Blender (NieR Replicant ver.1.2247... Mesh Pack Importer)",
     "author": "Woeful_Wolf",
-    "version": (0, 4),
-    "blender": (2, 92, 0),
+    "version": (0, 5),
+    "blender": (4, 1, 0),
     "api": 38019,
     "location": "File > Import",
     "description": "Import NieR Replicant Mesh Pack",
@@ -78,7 +78,8 @@ class SelectNoesisExecutable(bpy.types.Operator, ImportHelper):
 class Replicant2BlenderPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
     #noesis_path : StringProperty(default="D:\\Programs\\Noesis\\Noesis.exe", options={'HIDDEN'})
-    noesis_path : StringProperty(default="", options={'HIDDEN'})
+    noesis_path : StringProperty(options={'HIDDEN'})
+    assets_path : StringProperty(options={'HIDDEN'})
 
     def draw(self, context):
         layout = self.layout
@@ -91,6 +92,9 @@ class Replicant2BlenderPreferences(bpy.types.AddonPreferences):
         row = layout.row()
         row.prop(self, "noesis_path", text="")
         row.operator("replicant.noesis_select", icon="FILE_TICK", text="")
+        layout.label(text="Path To Assets Folder:")
+        row = layout.row()
+        row.prop(self, "assets_path", text="")
             
 
 # Registration

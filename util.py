@@ -2,6 +2,7 @@
 import os
 import sys
 import struct
+from typing import Tuple
 import numpy as np
 import math
 from enum import Enum
@@ -22,7 +23,7 @@ def to_ushort(bs):
 	return struct.unpack("<H", bs)[0]
 
 def to_string(bs, encoding = 'utf8'):
-	return bs.split(b'\x00')[0].decode(encoding)
+	return bs.split(b'\x00')[0].decode(encoding, 'replace')
 
 def alignRelative(openFile, relativeStart, alignment):
 	alignOffset = (((openFile.tell() - relativeStart) // alignment) + 1) * alignment
@@ -36,6 +37,21 @@ def uint32_to_bytes(var):
 
 def int32_to_bytes(var):
 	return var.to_bytes(4, byteorder='little', signed=True)
+
+def readFloatX3(f) -> Tuple[float, float, float]:
+	return struct.unpack("<fff", f.read(12))
+
+def readFloatX4(f) -> Tuple[float, float, float, float]:
+	return struct.unpack("<ffff", f.read(16))
+
+def readString(f) -> str:
+	byteStr = b""
+	while True:
+		byte = f.read(1)
+		if byte == b'\x00':
+			break
+		byteStr += byte
+	return byteStr.decode("utf-8", "replace")
 
 class XonSurfaceDXGIFormat(Enum):
 	UNKNOWN = 0
