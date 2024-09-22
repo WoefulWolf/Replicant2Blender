@@ -110,12 +110,14 @@ def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
     if not os.path.isdir(converted_path):
         os.makedirs(converted_path)
 
+    extracted_textures_paths = []
+
     for texturePack in texture_packs:
         print("Extracting textures...")
         k = 0
         for assetFile in texturePack.assetFiles:
             if ".rtex" not in assetFile.name:
-                continue
+                    continue
             texHead = assetFile.content.texHead
             assetPackName = assetFile.name.replace(".rtex", "")
             textureFilename = assetPackName + ".dds"
@@ -169,7 +171,7 @@ def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
 
             # DDS_HEADER_DXT10
             # DXGI Format
-            format = get_DXGI_Format(texHead.header.XonSurfaceFormat)
+            format = get_DXGI_format(texHead.header.XonSurfaceFormat)
             if format == None or format == "UNKNOWN":
                 print("Texture extraction failed!", assetFile.name)
                 failed_texAsset.append(assetFile)
@@ -184,27 +186,25 @@ def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
             # ArraySize
             textureFile.write(uint32_to_bytes(1))
             # MiscFlags2
-            textureFile.write(uint32_to_bytes(2))
+            alpha_mode = get_alpha_mode(texHead.header.XonSurfaceFormat)
+            textureFile.write(uint32_to_bytes(alpha_mode))
 
             # TextureData
             textureFile.write(texturePack.texData[k].data)
             textureFile.close()
+            extracted_textures_paths.append(textureFullPath)
             k += 1
 
     # Noesis Converting
     argPrograms = []
     for texturePack in texture_packs:
         print("Batch converting textures from", texturePack.assetPacks[0].name, "with Noesis...")
-        for assetFile in texturePack.assetFiles:
-            if ".rtex" not in assetFile.name:
-                continue
-            texHead = assetFile.content.texHead
-            assetPackName = assetFile.name.replace(".rtex", "")
-            textureFilename = assetPackName + ".dds"
-            textureFullPath = r2b_extracted_path + "\\" + textureFilename
-            
-            in_path = textureFullPath
-            out_path = r2b_extracted_path + "\\converted\\" + assetPackName + ".png"
+        for texture_path in extracted_textures_paths:
+            in_path = texture_path
+            directory = os.path.dirname(in_path)
+            converted_path = directory + "\\converted\\"
+            out_path = converted_path + os.path.basename(in_path).replace(".dds", ".png")
+            print("Converting", texture_path, "to", out_path)
             argProgram = []
             argProgram.append(noesis_path)
             argProgram.append("?cmode")

@@ -25,7 +25,7 @@ class Header:
         try:
             self.XonSurfaceFormat = XonSurfaceDXGIFormat(to_uint(packFile.read(4)))
         except:
-            self.XonSurfaceFormat = packFile.read(4)
+            self.XonSurfaceFormat = to_uint(packFile.read(4))
 
         self.numMipSurfaces = to_uint(packFile.read(4))
         offsetToMipSurfaces = to_uint(packFile.read(4))

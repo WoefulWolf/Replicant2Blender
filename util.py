@@ -7,22 +7,22 @@ import numpy as np
 import math
 from enum import Enum
 
-def to_float(bs):
+def to_float(bs) -> float:
 	return struct.unpack("<f", bs)[0]
 
-def to_float16(bs):
+def to_float16(bs) -> float:
 	return float(np.frombuffer(bs, np.float16)[0])
 
-def to_int(bs):
+def to_int(bs) -> int:
 	return (int.from_bytes(bs, byteorder='little', signed=True))
 
-def to_uint(bs):
+def to_uint(bs) -> int:
 	return (int.from_bytes(bs, byteorder='little', signed=False))
 
-def to_ushort(bs):
+def to_ushort(bs) -> int:
 	return struct.unpack("<H", bs)[0]
 
-def to_string(bs, encoding = 'utf8'):
+def to_string(bs, encoding = 'utf8') -> str:
 	return bs.split(b'\x00')[0].decode(encoding, 'replace')
 
 def alignRelative(openFile, relativeStart, alignment):
@@ -55,6 +55,7 @@ def readString(f) -> str:
 
 class XonSurfaceDXGIFormat(Enum):
 	UNKNOWN = 0
+	R8G8B8A8_UNORM_STRAIGHT= 0x00010700
 	R8G8B8A8_UNORM = 0x00010800
 	R8G8B8A8_UNORM_SRGB = 0x00010B00
 	BC1_UNORM = 0x00010F00
@@ -68,9 +69,21 @@ class XonSurfaceDXGIFormat(Enum):
 	R32G32B32A32_FLOAT = 0x00030000
 	A8_UNORM = 0x00031700
 
-def get_DXGI_Format(surfaceFormat):
+def get_DXGI_format(surfaceFormat):
 	if (surfaceFormat == XonSurfaceDXGIFormat.UNKNOWN):
 		return "UNKNOWN"
+	
+	if (surfaceFormat == XonSurfaceDXGIFormat.R32G32B32A32_FLOAT):
+		return 3
+	
+	if (surfaceFormat == XonSurfaceDXGIFormat.R8G8B8A8_UNORM_STRAIGHT):
+		return 28
+	
+	if (surfaceFormat == XonSurfaceDXGIFormat.R8G8B8A8_UNORM):
+		return 28
+	
+	if (surfaceFormat == XonSurfaceDXGIFormat.R8G8B8A8_UNORM_SRGB):
+		return 29
 
 	if (surfaceFormat == XonSurfaceDXGIFormat.BC1_UNORM):
 		return 71
@@ -96,10 +109,13 @@ def get_DXGI_Format(surfaceFormat):
 	if (surfaceFormat == XonSurfaceDXGIFormat.BC5_UNORM):
 		return 83
 
-	if (surfaceFormat == XonSurfaceDXGIFormat.R32G32B32A32_FLOAT):
-		return 3
-
 	if (surfaceFormat == XonSurfaceDXGIFormat.A8_UNORM):
 		return 65
 
 	return None
+
+def get_alpha_mode(surfaceFormat):
+	if (surfaceFormat == XonSurfaceDXGIFormat.R8G8B8A8_UNORM_STRAIGHT):
+		return 1
+
+	return 2
