@@ -87,7 +87,7 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
         print("Please include the unknown formats logged below and the path of the file you were trying to import.")
         for assetFile in failedTexturesAssets:
             texHead = assetFile.content.texHead
-            print(assetFile.name, "0x"+(texHead.header.XonSurfaceFormat).hex())
+            print(assetFile.name, hex(texHead.header.XonSurfaceFormat))
     else:
         print('Importing finished. ;)')
 
