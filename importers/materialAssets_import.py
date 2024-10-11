@@ -208,7 +208,7 @@ def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
             argProgram = []
             argProgram.append(noesis_path)
             argProgram.append("?cmode")
-            argProgram.append(textureFullPath)
+            argProgram.append(texture_path)
             argProgram.append(out_path)
             argPrograms.append(argProgram)
     
