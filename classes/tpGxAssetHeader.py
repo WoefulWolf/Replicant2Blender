@@ -1,4 +1,5 @@
 from struct import pack
+from typing import List
 from ..util import *
 
 class tpGxAssetHeader:
@@ -6,7 +7,7 @@ class tpGxAssetHeader:
         self.header = Header(packFile)
 
         packFile.seek(self.header.offsetUnknownAssets)
-        self.unknownAssets = []
+        self.unknownAssets: List[UnknownAsset] = []
         for i in range(self.header.numUnknownAssets):
             self.unknownAssets.append(UnknownAsset(packFile))
 
@@ -28,7 +29,7 @@ class UnknownAsset:
         self.unknownHash = packFile.read(4)
         self.unknownFlag = to_uint(packFile.read(4))
         
-        self.textures = []
+        self.textures: List[Texture] = []
 
         if (self.unknownFlag == 0):
             return
@@ -59,7 +60,7 @@ class UnknownAsset:
 
         fileSize = packFile.seek(0, os.SEEK_END)
         packFile.seek(self.offsetMaterialParams)
-        self.materialParamHeaders = []
+        self.materialParamHeaders: List[MaterialParamsHeader] = []
         for i in range(self.numMaterialParams):
             paramHeader = MaterialParamsHeader(packFile)
             if paramHeader.offsetParameters > fileSize:
@@ -70,7 +71,7 @@ class UnknownAsset:
 
         for materialParamHeader in self.materialParamHeaders:
             packFile.seek(materialParamHeader.offsetParameters)
-            self.parameters = []
+            self.parameters: List[MaterialParameter] = []
             for i in range(materialParamHeader.numParameters):
                 self.parameters.append(MaterialParameter(packFile))
 
@@ -84,7 +85,7 @@ class UnknownAsset:
             self.textures.append(texture)
 
         packFile.seek(self.offsetTPVars)
-        self.tpVars = []
+        self.tpVars: List[TPVar] = []
         for i in range(self.numTPVars):
             tpVar = TPVar(packFile)
             if tpVar.offsetName > fileSize:

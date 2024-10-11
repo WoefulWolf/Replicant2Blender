@@ -130,12 +130,12 @@ def construct_meshes(pack):
                         group.add([m], vertexWeights[n], "REPLACE")
                 
             # Assign UVs
-            bpy.context.view_layer.objects.active = bObj
-            bpy.ops.object.mode_set(mode="EDIT")
-            bm = bmesh.from_edit_mesh(bObj.data)
-            uv_layers = [bm.loops.layers.uv.verify()]
+            bm = bmesh.new()
+            bm.from_mesh(bObj.data)
+            
+            uv_layers = []
             for m, uvMap in enumerate(pack.meshData[i].objectGroupVertices[k].vertexUVMaps):
-                if m > 0 and len(pack.meshData[i].objectGroupVertices[k].vertexUVMaps[m]) > 0:
+                if len(pack.meshData[i].objectGroupVertices[k].vertexUVMaps[m]) > 0:
                     uv_layers.append(bm.loops.layers.uv.new("UVMap" + str(m)))
 
             for face in bm.faces:
@@ -157,7 +157,8 @@ def construct_meshes(pack):
                     if (bm.verts[matFace[0]] != bm.verts[matFace[1]] and bm.verts[matFace[0]] != bm.verts[matFace[2]] and bm.verts[matFace[1]] != bm.verts[matFace[2]]):
                         face = bm.faces.get([bm.verts[matFace[0]], bm.verts[matFace[1]], bm.verts[matFace[2]]]).material_index = matObjects.materialIndex
 
-            bpy.ops.object.mode_set(mode='OBJECT')
+            bm.to_mesh(bObj.data)
+            bm.free()
             bObj.rotation_euler = (math.radians(90),0,0)
 
             # Parent object to armature

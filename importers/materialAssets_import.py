@@ -3,6 +3,8 @@ import subprocess
 import binascii
 import bpy
 
+from ..classes.tpGxAssetHeader import UnknownAsset
+from .materials.master_rs_layer4 import master_rs_layer4
 from numpy import uint
 from ..util import *
 
@@ -15,12 +17,20 @@ def construct_materials(pack_dir, material_packs):
 
         b_mat_name = materialAssetName.split("_", 1)[1].split(".")[0].lower()
 
+        materialAsset: UnknownAsset = materialAssetHeader.unknownAssets[0]
+
         if b_mat_name in bpy.data.materials:
             material = bpy.data.materials[b_mat_name]
+            # continue
         else:
             material = bpy.data.materials.new(b_mat_name)
         
         print("Generating material", b_mat_name)
+
+        if "master_rs_layer4" in materialAsset.masterMaterialPath:
+            master_rs_layer4(textures_dir, material, materialAsset)
+            continue
+
         material.use_nodes = True
         material.node_tree.links.clear()
         material.node_tree.nodes.clear()
@@ -34,7 +44,9 @@ def construct_materials(pack_dir, material_packs):
         principled.location = 900,0
         output_link = links.new( principled.outputs['BSDF'], output.inputs['Surface'])
 
-        for texture in materialAssetHeader.unknownAssets[0].textures:
+
+
+        for texture in materialAsset.textures:
             texture_filename_base = texture.filename.replace(".rtex", "")
             texture_filename = texture_filename_base + ".png"
 
