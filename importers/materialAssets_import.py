@@ -1,8 +1,10 @@
 import os
 import subprocess
 import binascii
+from typing import List
 import bpy
 
+from ..classes.pack import Pack
 from ..classes.tpGxAssetHeader import UnknownAsset
 from .materials.master_rs_layer4 import master_rs_layer4
 from numpy import uint
@@ -10,7 +12,7 @@ from ..util import *
 
 def construct_materials(pack_dir, material_packs):
     print("Constructing materials...")
-    textures_dir = pack_dir + "\\replicant2blender_extracted\\converted\\"
+    textures_dir = pack_dir + "\\replicant2blender_extracted\\"
     for materialPack in material_packs:
         materialAssetName = materialPack.assetPacks[0].name
         materialAssetHeader = materialPack.assetPacks[0].content.assetHeader
@@ -28,7 +30,10 @@ def construct_materials(pack_dir, material_packs):
         print("Generating material", b_mat_name)
 
         if "master_rs_layer4" in materialAsset.masterMaterialPath:
-            master_rs_layer4(textures_dir, material, materialAsset)
+            try:
+                master_rs_layer4(textures_dir, material, materialAsset)
+            except Exception as e:
+                print("[!] Failed to construct material:", material.name)
             continue
 
         material.use_nodes = True
@@ -44,17 +49,14 @@ def construct_materials(pack_dir, material_packs):
         principled.location = 900,0
         output_link = links.new( principled.outputs['BSDF'], output.inputs['Surface'])
 
-
-
         for texture in materialAsset.textures:
             texture_filename_base = texture.filename.replace(".rtex", "")
             texture_filename = texture_filename_base + ".png"
 
-
             if texture.mapType in ["texBaseColor", "texBaseColor0"]:
                 color_image = nodes.new(type='ShaderNodeTexImage')
                 color_image.location = 0, 60
-                color_image.image = bpy.data.images.load(textures_dir + texture_filename)
+                color_image.image = bpy.data.images.load(search_texture(textures_dir, texture_filename))
                 color_image.hide = True
 
                 albedo_principled = links.new(color_image.outputs['Color'], principled.inputs['Base Color'])
@@ -63,7 +65,7 @@ def construct_materials(pack_dir, material_packs):
             elif texture.mapType in ["texORM", "texORM0"]:
                 mask_image = nodes.new(type='ShaderNodeTexImage')
                 mask_image.location = 0, 0
-                mask_image.image = bpy.data.images.load(textures_dir + texture_filename)
+                mask_image.image = bpy.data.images.load(search_texture(textures_dir, texture_filename))
                 mask_image.image.colorspace_settings.name = 'Non-Color'
                 mask_image.hide = True
 
@@ -78,7 +80,7 @@ def construct_materials(pack_dir, material_packs):
             elif texture.mapType in ["texNormal", "texNormal0"]:
                 normal_image = nodes.new(type='ShaderNodeTexImage')
                 normal_image.location = -300, -60
-                normal_image.image = bpy.data.images.load(textures_dir + texture_filename)
+                normal_image.image = bpy.data.images.load(search_texture(textures_dir, texture_filename))
                 normal_image.image.colorspace_settings.name = 'Non-Color'
                 normal_image.hide = True
 
@@ -110,22 +112,24 @@ def construct_materials(pack_dir, material_packs):
                 normalmap_link = links.new(normalmap_shader.outputs['Normal'], principled.inputs['Normal'])
                 
 
-def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
+def extract_textures(pack_dir, texture_packs: List[Pack], noesis_path, batch_size):
     failed_texAsset = []
-
-    r2b_extracted_path = pack_dir + "\\" + "replicant2blender_extracted"
-    converted_path = r2b_extracted_path + "\\" + "converted"
-
-    if not os.path.isdir(r2b_extracted_path):
-        os.makedirs(r2b_extracted_path)
-
-    if not os.path.isdir(converted_path):
-        os.makedirs(converted_path)
-
     extracted_textures_paths = []
 
     for texturePack in texture_packs:
         print("Extracting textures...")
+
+        asset_pack_name = texturePack.assetPacks[0].name.replace(".xap", "")
+
+        r2b_extracted_path = pack_dir + "\\" + "replicant2blender_extracted" + "\\" + asset_pack_name
+        converted_path = r2b_extracted_path + "\\" + "converted"
+
+        if not os.path.isdir(r2b_extracted_path):
+            os.makedirs(r2b_extracted_path)
+
+        if not os.path.isdir(converted_path):
+            os.makedirs(converted_path)
+
         k = 0
         for assetFile in texturePack.assetFiles:
             if ".rtex" not in assetFile.name:
@@ -188,6 +192,7 @@ def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
                 print("Texture extraction failed!", assetFile.name)
                 failed_texAsset.append(assetFile)
                 textureFile.close()
+                # debug_dump_texture(assetPackName, r2b_extracted_path, texHead, texturePack.texData[k].data, noesis_path, batch_size)
                 continue
             else:
                 textureFile.write(uint32_to_bytes(format))
@@ -239,3 +244,113 @@ def extract_textures(pack_dir, texture_packs, noesis_path, batch_size):
             p.wait()
 
     return failed_texAsset
+
+
+def debug_dump_texture(assetPackName, r2b_extracted_path, texHead, texData, noesis_path, batch_size):
+    print("[DEBUG] Dumping textures for", assetPackName)
+
+    debug_extracted_path = r2b_extracted_path + "\\debug"
+
+    if not os.path.isdir(debug_extracted_path):
+        os.makedirs(debug_extracted_path)
+
+    extracted_textures_paths = []
+    for k in range(100):
+        textureFilename = assetPackName + "_" + str(k) + ".dds"
+        textureFullPath = debug_extracted_path + "\\" + textureFilename
+        textureFile = open(textureFullPath, "wb")
+
+        # Magic
+        textureFile.write(str_to_bytes("DDS\x20"))
+        # HeaderSize
+        textureFile.write(uint32_to_bytes(124))
+        # Flags
+        textureFile.write(str_to_bytes("\x07\x10\x0A\x00"))
+        # Height
+        textureFile.write(uint32_to_bytes(texHead.header.height))
+        # Width
+        textureFile.write(uint32_to_bytes(texHead.header.width))
+        # Size
+        textureFile.write(uint32_to_bytes(texHead.header.filesize))
+        # Depth
+        textureFile.write(uint32_to_bytes(1))
+        # MipMapCount
+        textureFile.write(uint32_to_bytes(texHead.header.numMipSurfaces))
+        # Reserved
+        for i in range(11):
+            textureFile.write(uint32_to_bytes(0))
+
+        # DDS_PIXELFORMAT
+        # Size
+        textureFile.write(uint32_to_bytes(32))
+        # Flags
+        textureFile.write(uint32_to_bytes(4))
+        # fourCC
+        textureFile.write(str_to_bytes("DX10"))
+        # RGBBitCount
+        textureFile.write(uint32_to_bytes(0))
+        # RGBABitMasks
+        for i in range(4):
+            textureFile.write(uint32_to_bytes(0))
+
+        # CAPS
+        textureFile.write(str_to_bytes("\x08\x10\x04\x00"))
+        # CAPS 2
+        textureFile.write(uint32_to_bytes(0))
+        # CAPS 3
+        textureFile.write(uint32_to_bytes(0))
+        # CAPS 4
+        textureFile.write(uint32_to_bytes(0))
+
+        # Reserved
+        textureFile.write(uint32_to_bytes(0))
+
+        # DDS_HEADER_DXT10
+        # DXGI Format
+        textureFile.write(uint32_to_bytes(k))
+        # D3D10 Resource Dimension
+        textureFile.write(uint32_to_bytes(3))
+        # MiscFlags
+        textureFile.write(uint32_to_bytes(0))
+        # ArraySize
+        textureFile.write(uint32_to_bytes(1))
+        # MiscFlags2
+        alpha_mode = get_alpha_mode(texHead.header.XonSurfaceFormat)
+        textureFile.write(uint32_to_bytes(alpha_mode))
+
+        # TextureData
+        textureFile.write(texData)
+        textureFile.close()
+        extracted_textures_paths.append(textureFullPath)
+
+    # Noesis Converting
+    if not os.path.isdir(debug_extracted_path + "\\converted"):
+        os.makedirs(debug_extracted_path + "\\converted")
+        
+    argPrograms = []
+    for texture_path in extracted_textures_paths:
+        in_path = texture_path
+        directory = os.path.dirname(in_path)
+        converted_path = directory + "\\converted\\"
+        out_path = converted_path + os.path.basename(in_path).replace(".dds", ".png")
+        print("Converting", texture_path, "to", out_path)
+        argProgram = []
+        argProgram.append(noesis_path)
+        argProgram.append("?cmode")
+        argProgram.append(texture_path)
+        argProgram.append(out_path)
+        argPrograms.append(argProgram)
+    
+    processes = []
+    while len(argPrograms) > 0:
+        if len(argPrograms) < batch_size:
+            for argProg in argPrograms:
+                processes.append(subprocess.Popen(argProg, stdout=subprocess.DEVNULL))
+            argPrograms.clear()
+        else:
+            for i in range(batch_size):
+                processes.append(subprocess.Popen(argPrograms[i], stdout=subprocess.DEVNULL))
+            del argPrograms[:batch_size]
+
+        for p in processes:
+            p.wait()

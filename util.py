@@ -66,6 +66,7 @@ class XonSurfaceDXGIFormat(Enum):
 	BC3_UNORM_SRGB = 0x00011400
 	BC4_UNORM = 0x00011500
 	BC5_UNORM = 0x00011600
+	BC7_UNORM = 0x00011900
 	R32G32B32A32_FLOAT = 0x00030000
 	A8_UNORM = 0x00031700
 
@@ -84,6 +85,9 @@ def get_DXGI_format(surfaceFormat):
 	
 	if (surfaceFormat == XonSurfaceDXGIFormat.R8G8B8A8_UNORM_SRGB):
 		return 29
+	
+	if (surfaceFormat == XonSurfaceDXGIFormat.A8_UNORM):
+		return 65
 
 	if (surfaceFormat == XonSurfaceDXGIFormat.BC1_UNORM):
 		return 71
@@ -108,9 +112,9 @@ def get_DXGI_format(surfaceFormat):
 
 	if (surfaceFormat == XonSurfaceDXGIFormat.BC5_UNORM):
 		return 83
-
-	if (surfaceFormat == XonSurfaceDXGIFormat.A8_UNORM):
-		return 65
+	
+	if (surfaceFormat == XonSurfaceDXGIFormat.BC7_UNORM):
+		return 98
 
 	return None
 
@@ -119,3 +123,10 @@ def get_alpha_mode(surfaceFormat):
 		return 1
 
 	return 2
+
+def search_texture(textures_dir, texture_filename):
+    for root, dirs, files in os.walk(textures_dir):
+        for file in files:
+            if file == texture_filename:
+                return os.path.join(root, file)
+    return None

@@ -1,5 +1,7 @@
 import bpy
 
+from ...util import search_texture
+
 from ...classes.tpGxAssetHeader import UnknownAsset
 
 def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
@@ -34,7 +36,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         return
 
     mask_image = nodes.new(type='ShaderNodeTexImage')
-    mask_image.image = bpy.data.images.load(textures_dir + converted_textures[mask_texture_index])
+    mask_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[mask_texture_index]))
     mask_image.image.colorspace_settings.name = 'Non-Color'
     mask_image.hide = True
 
@@ -50,7 +52,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         print("[!] Failed to find texBaseColor0 in material:", material.name)
         return
     color_0_image = nodes.new(type='ShaderNodeTexImage')
-    color_0_image.image = bpy.data.images.load(textures_dir + converted_textures[color_0_texture_index])
+    color_0_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[color_0_texture_index]))
     color_0_image.hide = True
 
     # Color 1
@@ -59,7 +61,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         print("[!] Failed to find texBaseColor1 in material:", material.name)
         return
     color_1_image = nodes.new(type='ShaderNodeTexImage')
-    color_1_image.image = bpy.data.images.load(textures_dir + converted_textures[color_1_texture_index])
+    color_1_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[color_1_texture_index]))
     color_1_image.hide = True
 
     # Color 2
@@ -68,7 +70,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         print("[!] Failed to find texBaseColor2 in material:", material.name)
         return
     color_2_image = nodes.new(type='ShaderNodeTexImage')
-    color_2_image.image = bpy.data.images.load(textures_dir + converted_textures[color_2_texture_index])
+    color_2_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[color_2_texture_index]))
     color_2_image.hide = True
 
     # Color 3
@@ -77,7 +79,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         print("[!] Failed to find texBaseColor3 in material:", material.name)
         return
     color_3_image = nodes.new(type='ShaderNodeTexImage')
-    color_3_image.image = bpy.data.images.load(textures_dir + converted_textures[color_3_texture_index])
+    color_3_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[color_3_texture_index]))
     color_3_image.hide = True
 
     # Mix Color 0-1
@@ -109,7 +111,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         print("[!] Failed to find texORM0 in material:", material.name)
         return
     orm_0_image = nodes.new(type='ShaderNodeTexImage')
-    orm_0_image.image = bpy.data.images.load(textures_dir + converted_textures[orm_0_texture_index])
+    orm_0_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[orm_0_texture_index]))
     orm_0_image.image.colorspace_settings.name = 'Non-Color'
     orm_0_image.hide = True
 
@@ -123,7 +125,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         print("[!] Failed to find texORM1 in material:", material.name)
         return
     orm_1_image = nodes.new(type='ShaderNodeTexImage')
-    orm_1_image.image = bpy.data.images.load(textures_dir + converted_textures[orm_1_texture_index])
+    orm_1_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[orm_1_texture_index]))
     orm_1_image.image.colorspace_settings.name = 'Non-Color'
     orm_1_image.hide = True
 
@@ -137,7 +139,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         print("[!] Failed to find texORM2 in material:", material.name)
         return
     orm_2_image = nodes.new(type='ShaderNodeTexImage')
-    orm_2_image.image = bpy.data.images.load(textures_dir + converted_textures[orm_2_texture_index])
+    orm_2_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[orm_2_texture_index]))
     orm_2_image.image.colorspace_settings.name = 'Non-Color'
     orm_2_image.hide = True
 
@@ -151,7 +153,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         print("[!] Failed to find texORM3 in material:", material.name)
         return
     orm_3_image = nodes.new(type='ShaderNodeTexImage')
-    orm_3_image.image = bpy.data.images.load(textures_dir + converted_textures[orm_3_texture_index])
+    orm_3_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[orm_3_texture_index]))
     orm_3_image.image.colorspace_settings.name = 'Non-Color'
     orm_3_image.hide = True
 
@@ -234,7 +236,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         print("[!] Failed to find texNormal0 in material:", material.name)
         return
     normal_0_image = nodes.new(type='ShaderNodeTexImage')
-    normal_0_image.image = bpy.data.images.load(textures_dir + converted_textures[normal_0_texture_index])
+    normal_0_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[normal_0_texture_index]))
     normal_0_image.image.colorspace_settings.name = 'Non-Color'
     normal_0_image.hide = True
 
@@ -244,7 +246,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         print("[!] Failed to find texNormal1 in material:", material.name)
         return
     normal_1_image = nodes.new(type='ShaderNodeTexImage')
-    normal_1_image.image = bpy.data.images.load(textures_dir + converted_textures[normal_1_texture_index])
+    normal_1_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[normal_1_texture_index]))
     normal_1_image.image.colorspace_settings.name = 'Non-Color'
     normal_1_image.hide = True
 
@@ -254,7 +256,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         print("[!] Failed to find texNormal2 in material:", material.name)
         return
     normal_2_image = nodes.new(type='ShaderNodeTexImage')
-    normal_2_image.image = bpy.data.images.load(textures_dir + converted_textures[normal_2_texture_index])
+    normal_2_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[normal_2_texture_index]))
     normal_2_image.image.colorspace_settings.name = 'Non-Color'
     normal_2_image.hide = True
 
@@ -264,7 +266,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         print("[!] Failed to find texNormal3 in material:", material.name)
         return
     normal_3_image = nodes.new(type='ShaderNodeTexImage')
-    normal_3_image.image = bpy.data.images.load(textures_dir + converted_textures[normal_3_texture_index])
+    normal_3_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[normal_3_texture_index]))
     normal_3_image.image.colorspace_settings.name = 'Non-Color'
     normal_3_image.hide = True
 
