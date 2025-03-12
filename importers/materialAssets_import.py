@@ -6,6 +6,7 @@ import bpy
 
 from ..classes.pack import Pack
 from ..classes.tpGxAssetHeader import UnknownAsset
+from ..classes.tpGxTexHead import tpGxTexHead
 from .materials.master_rs_layer4 import master_rs_layer4
 from numpy import uint
 from ..util import *
@@ -145,7 +146,12 @@ def extract_textures(pack_dir, texture_packs: List[Pack], noesis_path, batch_siz
             # HeaderSize
             textureFile.write(uint32_to_bytes(124))
             # Flags
-            textureFile.write(str_to_bytes("\x07\x10\x0A\x00"))
+            flags = 0x1 | 0x2 | 0x4 | 0x1000 | 0x80000    # DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT | DDSD_LINEARSIZE
+            if texHead.header.numMipSurfaces > 1:
+                flags |= 0x20000    # DDSD_MIPMAPCOUNT
+            if texHead.header.numSurfaces > 1:
+                flags |= 0x800000    # DDSD_DEPTH
+            textureFile.write(uint32_to_bytes(flags))
             # Height
             textureFile.write(uint32_to_bytes(texHead.header.height))
             # Width
@@ -174,9 +180,15 @@ def extract_textures(pack_dir, texture_packs: List[Pack], noesis_path, batch_siz
                 textureFile.write(uint32_to_bytes(0))
 
             # CAPS
-            textureFile.write(str_to_bytes("\x08\x10\x04\x00"))
+            caps = 0x1000   # DDSCAPS_TEXTURE
+            if texHead.header.numMipSurfaces > 1:
+                caps |= 0x8 | 0x400000    # DDSCAPS_MIPMAP | DDSCAPS_COMPLEX
+            textureFile.write(uint32_to_bytes(caps))
             # CAPS 2
-            textureFile.write(uint32_to_bytes(0))
+            caps2 = 0x0
+            if texHead.header.numSurfaces > 1:
+                caps2 |= 0x200000   # DDSCAPS2_VOLUME
+            textureFile.write(uint32_to_bytes(caps2))
             # CAPS 3
             textureFile.write(uint32_to_bytes(0))
             # CAPS 4
@@ -192,12 +204,17 @@ def extract_textures(pack_dir, texture_packs: List[Pack], noesis_path, batch_siz
                 print("Texture extraction failed!", assetFile.name)
                 failed_texAsset.append(assetFile)
                 textureFile.close()
-                # debug_dump_texture(assetPackName, r2b_extracted_path, texHead, texturePack.texData[k].data, noesis_path, batch_size)
+                if assetFile.name == "":
+                    debug_dump_texture(assetPackName, r2b_extracted_path, texHead, texturePack.texData[k].data, noesis_path, batch_size)
+                k += 1
                 continue
             else:
                 textureFile.write(uint32_to_bytes(format))
             # D3D10 Resource Dimension
-            textureFile.write(uint32_to_bytes(3))
+            dimension = 3
+            if texHead.header.numSurfaces > 1:
+                dimension = 4
+            textureFile.write(uint32_to_bytes(dimension))
             # MiscFlags
             textureFile.write(uint32_to_bytes(0))
             # ArraySize
@@ -246,7 +263,7 @@ def extract_textures(pack_dir, texture_packs: List[Pack], noesis_path, batch_siz
     return failed_texAsset
 
 
-def debug_dump_texture(assetPackName, r2b_extracted_path, texHead, texData, noesis_path, batch_size):
+def debug_dump_texture(assetPackName, r2b_extracted_path, texHead: tpGxTexHead, texData, noesis_path, batch_size):
     print("[DEBUG] Dumping textures for", assetPackName)
 
     debug_extracted_path = r2b_extracted_path + "\\debug"
@@ -256,72 +273,86 @@ def debug_dump_texture(assetPackName, r2b_extracted_path, texHead, texData, noes
 
     extracted_textures_paths = []
     for k in range(100):
-        textureFilename = assetPackName + "_" + str(k) + ".dds"
-        textureFullPath = debug_extracted_path + "\\" + textureFilename
-        textureFile = open(textureFullPath, "wb")
+        for a in range(1,2):
+            textureFilename = assetPackName + "_" + str(k) + "_" + str(a) + ".dds"
+            textureFullPath = debug_extracted_path + "\\" + textureFilename
+            textureFile = open(textureFullPath, "wb")
 
-        # Magic
-        textureFile.write(str_to_bytes("DDS\x20"))
-        # HeaderSize
-        textureFile.write(uint32_to_bytes(124))
-        # Flags
-        textureFile.write(str_to_bytes("\x07\x10\x0A\x00"))
-        # Height
-        textureFile.write(uint32_to_bytes(texHead.header.height))
-        # Width
-        textureFile.write(uint32_to_bytes(texHead.header.width))
-        # Size
-        textureFile.write(uint32_to_bytes(texHead.header.filesize))
-        # Depth
-        textureFile.write(uint32_to_bytes(1))
-        # MipMapCount
-        textureFile.write(uint32_to_bytes(texHead.header.numMipSurfaces))
-        # Reserved
-        for i in range(11):
+            # Magic
+            textureFile.write(str_to_bytes("DDS\x20"))
+            # HeaderSize
+            textureFile.write(uint32_to_bytes(124))
+            # Flags
+            flags = 0x1 | 0x2 | 0x4 | 0x1000 | 0x80000    # DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT | DDSD_LINEARSIZE
+            if texHead.header.numMipSurfaces > 1:
+                flags |= 0x20000    # DDSD_MIPMAPCOUNT
+            if texHead.header.numSurfaces > 1:
+                flags |= 0x800000    # DDSD_DEPTH
+            textureFile.write(uint32_to_bytes(flags))
+            # Height
+            textureFile.write(uint32_to_bytes(texHead.header.height))
+            # Width
+            textureFile.write(uint32_to_bytes(texHead.header.width))
+            # Size
+            textureFile.write(uint32_to_bytes(texHead.header.filesize))
+            # Depth
+            textureFile.write(uint32_to_bytes(texHead.header.numSurfaces))
+            # MipMapCount
+            textureFile.write(uint32_to_bytes(texHead.header.numMipSurfaces))
+            # Reserved
+            for i in range(11):
+                textureFile.write(uint32_to_bytes(0))
+
+            # DDS_PIXELFORMAT
+            # Size
+            textureFile.write(uint32_to_bytes(32))
+            # Flags
+            textureFile.write(uint32_to_bytes(4))
+            # fourCC
+            textureFile.write(str_to_bytes("DX10"))
+            # RGBBitCount
+            textureFile.write(uint32_to_bytes(0))
+            # RGBABitMasks
+            for i in range(4):
+                textureFile.write(uint32_to_bytes(0))
+
+            # CAPS
+            caps = 0x1000   # DDSCAPS_TEXTURE
+            if texHead.header.numMipSurfaces > 1:
+                caps |= 0x8 | 0x400000    # DDSCAPS_MIPMAP | DDSCAPS_COMPLEX
+            textureFile.write(uint32_to_bytes(caps))
+            # CAPS 2
+            caps2 = 0x0
+            if texHead.header.numSurfaces > 1:
+                caps2 |= 0x200000   # DDSCAPS2_VOLUME
+            textureFile.write(uint32_to_bytes(caps2))
+            # CAPS 3
+            textureFile.write(uint32_to_bytes(0))
+            # CAPS 4
             textureFile.write(uint32_to_bytes(0))
 
-        # DDS_PIXELFORMAT
-        # Size
-        textureFile.write(uint32_to_bytes(32))
-        # Flags
-        textureFile.write(uint32_to_bytes(4))
-        # fourCC
-        textureFile.write(str_to_bytes("DX10"))
-        # RGBBitCount
-        textureFile.write(uint32_to_bytes(0))
-        # RGBABitMasks
-        for i in range(4):
+            # Reserved
             textureFile.write(uint32_to_bytes(0))
 
-        # CAPS
-        textureFile.write(str_to_bytes("\x08\x10\x04\x00"))
-        # CAPS 2
-        textureFile.write(uint32_to_bytes(0))
-        # CAPS 3
-        textureFile.write(uint32_to_bytes(0))
-        # CAPS 4
-        textureFile.write(uint32_to_bytes(0))
+            # DDS_HEADER_DXT10
+            # DXGI Format
+            textureFile.write(uint32_to_bytes(k))
+            # D3D10 Resource Dimension
+            dimension = 3
+            if texHead.header.numSurfaces > 1:
+                dimension = 4
+            textureFile.write(uint32_to_bytes(dimension))
+            # MiscFlags
+            textureFile.write(uint32_to_bytes(0))
+            # ArraySize
+            textureFile.write(uint32_to_bytes(1))
+            # MiscFlags2
+            textureFile.write(uint32_to_bytes(a))
 
-        # Reserved
-        textureFile.write(uint32_to_bytes(0))
-
-        # DDS_HEADER_DXT10
-        # DXGI Format
-        textureFile.write(uint32_to_bytes(k))
-        # D3D10 Resource Dimension
-        textureFile.write(uint32_to_bytes(3))
-        # MiscFlags
-        textureFile.write(uint32_to_bytes(0))
-        # ArraySize
-        textureFile.write(uint32_to_bytes(1))
-        # MiscFlags2
-        alpha_mode = get_alpha_mode(texHead.header.XonSurfaceFormat)
-        textureFile.write(uint32_to_bytes(alpha_mode))
-
-        # TextureData
-        textureFile.write(texData)
-        textureFile.close()
-        extracted_textures_paths.append(textureFullPath)
+            # TextureData
+            textureFile.write(texData)
+            textureFile.close()
+            extracted_textures_paths.append(textureFullPath)
 
     # Noesis Converting
     if not os.path.isdir(debug_extracted_path + "\\converted"):

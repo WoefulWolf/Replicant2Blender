@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Replicant2Blender (NieR Replicant ver.1.2247... Mesh Pack Importer)",
     "author": "Woeful_Wolf",
-    "version": (0, 5),
+    "version": (0, 6),
     "blender": (4, 1, 0),
     "api": 38019,
     "location": "File > Import",
@@ -58,7 +58,7 @@ class SelectNoesisExecutable(bpy.types.Operator, ImportHelper):
 
 class Replicant2BlenderPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
-    #noesis_path : StringProperty(default="D:\\Programs\\Noesis\\Noesis.exe", options={'HIDDEN'})
+    # noesis_path : StringProperty(default="D:\\Programs\\Noesis\\Noesis.exe", options={'HIDDEN'})
     noesis_path : StringProperty(options={'HIDDEN'})
     assets_path : StringProperty(options={'HIDDEN'})
 

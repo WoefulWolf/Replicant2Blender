@@ -55,8 +55,10 @@ def readString(f) -> str:
 
 class XonSurfaceDXGIFormat(Enum):
 	UNKNOWN = 0
+	R32G32B32A32_FLOAT = 0x00010000
 	R8G8B8A8_UNORM_STRAIGHT= 0x00010700
 	R8G8B8A8_UNORM = 0x00010800
+	R8_UNORM= 0x00010a00
 	R8G8B8A8_UNORM_SRGB = 0x00010B00
 	BC1_UNORM = 0x00010F00
 	BC1_UNORM_SRGB = 0x00011000
@@ -67,14 +69,19 @@ class XonSurfaceDXGIFormat(Enum):
 	BC4_UNORM = 0x00011500
 	BC5_UNORM = 0x00011600
 	BC7_UNORM = 0x00011900
-	R32G32B32A32_FLOAT = 0x00030000
-	A8_UNORM = 0x00031700
+	BC1_UNORM_VOLUME = 0x00021700
+	BC7_UNORM_SRGB = 0x00021A00
+	R32G32B32A32_UINT = 0x00030000
+	BC6H_UF16 = 0x00031700
 
 def get_DXGI_format(surfaceFormat):
 	if (surfaceFormat == XonSurfaceDXGIFormat.UNKNOWN):
 		return "UNKNOWN"
 	
 	if (surfaceFormat == XonSurfaceDXGIFormat.R32G32B32A32_FLOAT):
+		return 2
+	
+	if (surfaceFormat == XonSurfaceDXGIFormat.R32G32B32A32_UINT):
 		return 3
 	
 	if (surfaceFormat == XonSurfaceDXGIFormat.R8G8B8A8_UNORM_STRAIGHT):
@@ -86,10 +93,10 @@ def get_DXGI_format(surfaceFormat):
 	if (surfaceFormat == XonSurfaceDXGIFormat.R8G8B8A8_UNORM_SRGB):
 		return 29
 	
-	if (surfaceFormat == XonSurfaceDXGIFormat.A8_UNORM):
-		return 65
+	if (surfaceFormat == XonSurfaceDXGIFormat.R8_UNORM):
+		return 61
 
-	if (surfaceFormat == XonSurfaceDXGIFormat.BC1_UNORM):
+	if (surfaceFormat == XonSurfaceDXGIFormat.BC1_UNORM or surfaceFormat == XonSurfaceDXGIFormat.BC1_UNORM_VOLUME):
 		return 71
 
 	if (surfaceFormat == XonSurfaceDXGIFormat.BC1_UNORM_SRGB):
@@ -113,8 +120,14 @@ def get_DXGI_format(surfaceFormat):
 	if (surfaceFormat == XonSurfaceDXGIFormat.BC5_UNORM):
 		return 83
 	
+	if (surfaceFormat == XonSurfaceDXGIFormat.BC6H_UF16):
+		return 95
+	
 	if (surfaceFormat == XonSurfaceDXGIFormat.BC7_UNORM):
 		return 98
+	
+	if (surfaceFormat == XonSurfaceDXGIFormat.BC7_UNORM_SRGB):
+		return 99
 
 	return None
 

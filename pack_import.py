@@ -109,7 +109,7 @@ def only_extract_textures(packFilePath, batch_size, addon_name):
         print("Please include the unknown formats logged below and the path of the file you were trying to import.")
         for assetFile in failedTexturesAssets:
             texHead = assetFile.content.texHead
-            print(assetFile.name, "0x"+(texHead.header.XonSurfaceFormat).hex())
+            print(assetFile.name, hex(texHead.header.XonSurfaceFormat))
     else:
         print('Extraction finished. ;)')
 
