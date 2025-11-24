@@ -17,8 +17,8 @@ class File:
         returnPos = packFile.tell()
         packFile.seek(offsetName)
         self.name = to_string(packFile.read(1024))
-        
-        print("\t[+]", self.name)
+
+        log.d(f"\t[+] {self.name}")
 
         packFile.seek(offsetFileStart)
         fileID = packFile.read(4)

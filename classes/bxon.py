@@ -32,4 +32,4 @@ class BXON:
 
         packFile.seek(returnPos)
 
-        print("\t\t>", self.fileTypeName)
+        log.d(f"\t\t> {self.fileTypeName}")

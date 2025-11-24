@@ -28,19 +28,19 @@ class Pack:
         self.offsetToFiles = to_uint(packFile.read(4))
         offsetFiles = packFile.tell() + self.offsetToFiles - 4
 
-        print(" - Pack Paths:")
+        log.d(" - Pack Paths:")
         packFile.seek(offsetPaths)
         self.paths = []
         for i in range(self.pathCount):
             self.paths.append(Path(packFile))
-        
-        print(" - Pack AssetPacks:")
+
+        log.d(" - Pack AssetPacks:")
         packFile.seek(offsetAssetPacks)
         self.assetPacks: list[AssetPack] = []
         for i in range(self.assetPackCount):
             self.assetPacks.append(AssetPack(packFile))
 
-        print(" - Pack Files:")
+        log.d(" - Pack Files:")
         packFile.seek(offsetFiles)
         self.assetFiles: list[File] = []
         for i in range(self.fileCount):

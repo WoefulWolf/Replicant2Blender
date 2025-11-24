@@ -6,6 +6,7 @@ from typing import Tuple
 import numpy as np
 import math
 from enum import Enum
+from datetime import datetime
 
 def to_float(bs) -> float:
 	return struct.unpack("<f", bs)[0]
@@ -143,3 +144,34 @@ def search_texture(textures_dir, texture_filename):
             if file == texture_filename:
                 return os.path.join(root, file)
     return None
+
+class Logger:
+    def __init__(self, name):
+        self.name = name
+        self.HEADER = '\033[95m'
+        self.OKBLUE = '\033[94m'
+        self.OKCYAN = '\033[96m'
+        self.OKGREEN = '\033[92m'
+        self.WARNING = '\033[93m'
+        self.FAIL = '\033[91m'
+        self.ENDC = '\033[0m'
+        self.BOLD = '\033[1m'
+        self.UNDERLINE = '\033[4m'
+
+    def _get_timestamp(self):
+        return datetime.now().strftime("%H:%M:%S")
+
+    def d(self, message):
+        print(f"{self.OKCYAN}[{self._get_timestamp()}] [DEBUG] {self.name}: {message}{self.ENDC}")
+
+    def i(self, message):
+        print(f"{self.OKGREEN}[{self._get_timestamp()}] [INFO] {self.name}: {message}{self.ENDC}")
+
+    def w(self, message):
+        print(f"{self.WARNING}[{self._get_timestamp()}] [WARN] {self.name}: {message}{self.ENDC}")
+
+    def e(self, message):
+        print(f"{self.FAIL}[{self._get_timestamp()}] [ERROR] {self.name}: {message}{self.ENDC}")
+
+# Global logger instance
+log = Logger("Replicant2Blender")

@@ -4,6 +4,7 @@ from .importers.levelData_import import importLevelData
 from .classes.pack import *
 from .importers.meshAsset_import import construct_meshes
 from .importers.materialAssets_import import construct_materials, extract_textures
+from .util import log
 
 imported_texturePacks = []
 failed_texturePacks = []
@@ -17,20 +18,18 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
     pack_directory = os.path.dirname(os.path.abspath(packFilePath))
 
     # meshPack
-    print("Parsing Mesh PACK file...", packFilePath)
+    log.i(f"Parsing Mesh PACK file... {packFilePath}")
     with open(packFilePath, "rb") as packFile:
         meshPack = Pack(packFile)
-    print("\nConstructing Blender Objects...")
+    log.i("Constructing Blender Objects...")
     construct_meshes(meshPack)
     importLevelData(meshPack.levelData, addon_name)
+    log.i("Blender object construction complete.")
 
     # Import materials + textures
     failedTexturesAssets = []
     if do_extract_textures or do_construct_materials:
         noesis_path = bpy.context.preferences.addons[addon_name].preferences.noesis_path
-        if not os.path.isfile(noesis_path):
-            print("Noesis path is not set or invalid. Cancelling texture import!")
-            return
 
         # materialPacks
         materialPacks = []
@@ -43,12 +42,12 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
                 if os.path.isfile(materialPackFullPath + ".xap"):
                     materialPackFullPath += ".xap"
                 else:
-                    print("[!] Failed to find material PACK file:", materialPackFilename)
+                    log.w(f"Failed to find material PACK file: {materialPackFilename}")
                     continue
             
             if (materialPackFullPath not in imported_materialPacks):
                 imported_materialPacks.append(materialPackFullPath)
-                print("Parsing Material PACK file...", path.path)
+                log.i(f"Parsing Material PACK file... {path.path}")
                 with open(materialPackFullPath, "rb") as packFile:
                     materialPacks.append(Pack(packFile))
 
@@ -66,12 +65,12 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
                     else:
                         if (texturePackFullPath not in failed_texturePacks):
                             failed_texturePacks.append(texturePackFullPath)
-                            print("[!] Failed to find texture PACK file.", texturePackFilename)
+                            log.w(f"Failed to find texture PACK file. {texturePackFilename}")
                         continue
 
                 if (texturePackFullPath not in imported_texturePacks):
                     imported_texturePacks.append(texturePackFullPath)
-                    print("Parsing Texture PACK file...", path.path)
+                    log.i(f"Parsing Texture PACK file... {path.path}")
                     with open(texturePackFullPath, "rb") as packFile:
                         texturePacks.append(Pack(packFile))
 
@@ -82,20 +81,20 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
             construct_materials(pack_directory, materialPacks)
 
     if len(failedTexturesAssets) > 0:
-        print("[!] Some textures failed to extract!")
-        print("Report this issue @ https://github.com/WoefulWolf/Replicant2Blender/issues")
-        print("Please include the unknown formats logged below and the path of the file you were trying to import.")
+        log.e("Some textures failed to extract!")
+        log.e("Report this issue @ https://github.com/WoefulWolf/Replicant2Blender/issues")
+        log.e("Please include the unknown formats logged below and the path of the file you were trying to import.")
         for assetFile in failedTexturesAssets:
             texHead = assetFile.content.texHead
-            print(assetFile.name, hex(texHead.header.XonSurfaceFormat))
+            log.e(f"{assetFile.name} {hex(texHead.header.XonSurfaceFormat)}")
     else:
-        print('Importing finished. ;)')
+        log.i('Importing finished. ;)')
 
 def only_extract_textures(packFilePath, batch_size, addon_name):
     pack_directory = os.path.dirname(os.path.abspath(packFilePath))
     noesis_path = bpy.context.preferences.addons[addon_name].preferences.noesis_path
     if not os.path.isfile(noesis_path):
-        print("Noesis path is not set or invalid. Cancelling texture import!")
+        log.e("Noesis path is not set or invalid. Cancelling texture import!")
         return {"FAILED"}
 
     packFile = open(packFilePath, "rb")
@@ -104,13 +103,13 @@ def only_extract_textures(packFilePath, batch_size, addon_name):
     failedTexturesAssets = extract_textures(pack_directory, [texturePack], noesis_path, batch_size)
 
     if len(failedTexturesAssets) > 0:
-        print("[!] Some textures failed to extract!")
-        print("Report this issue @ https://github.com/WoefulWolf/Replicant2Blender/issues")
-        print("Please include the unknown formats logged below and the path of the file you were trying to import.")
+        log.e("Some textures failed to extract!")
+        log.e("Report this issue @ https://github.com/WoefulWolf/Replicant2Blender/issues")
+        log.e("Please include the unknown formats logged below and the path of the file you were trying to import.")
         for assetFile in failedTexturesAssets:
             texHead = assetFile.content.texHead
-            print(assetFile.name, hex(texHead.header.XonSurfaceFormat))
+            log.e(f"{assetFile.name} {hex(texHead.header.XonSurfaceFormat)}")
     else:
-        print('Extraction finished. ;)')
+        log.i('Extraction finished. ;)')
 
     

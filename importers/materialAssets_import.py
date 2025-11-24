@@ -12,8 +12,15 @@ from numpy import uint
 from ..util import *
 
 def construct_materials(pack_dir, material_packs):
-    print("Constructing materials...")
+    log.i("Constructing materials...")
     textures_dir = pack_dir + "\\replicant2blender_extracted\\"
+
+    # Renamed in 5.0
+    sepRGB_name = "ShaderNodeSeparateRGB" if bpy.app.version < (5, 0, 0) else "ShaderNodeSeparateColor"
+    sepRGB_input = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
+    comRGB_name = "ShaderNodeCombineRGB" if bpy.app.version < (5, 0, 0) else "ShaderNodeCombineColor"
+    comRGB_output = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
+
     for materialPack in material_packs:
         materialAssetName = materialPack.assetPacks[0].name
         materialAssetHeader = materialPack.assetPacks[0].content.assetHeader
@@ -27,14 +34,14 @@ def construct_materials(pack_dir, material_packs):
             # continue
         else:
             material = bpy.data.materials.new(b_mat_name)
-        
-        print("Generating material", b_mat_name)
+
+        log.i(f"Generating material {b_mat_name}")
 
         if "master_rs_layer4" in materialAsset.masterMaterialPath:
             try:
                 master_rs_layer4(textures_dir, material, materialAsset)
             except Exception as e:
-                print("[!] Failed to construct material:", material.name)
+                log.w(f"Failed to construct material: {material.name}")
             continue
 
         material.use_nodes = True
@@ -53,11 +60,15 @@ def construct_materials(pack_dir, material_packs):
         for texture in materialAsset.textures:
             texture_filename_base = texture.filename.replace(".rtex", "")
             texture_filename = texture_filename_base + ".png"
+            texture_file = search_texture(textures_dir, texture_filename)
+            if texture_file is None:
+                log.w(f"Failed to find texture: {texture_filename}")
+                continue
 
             if texture.mapType in ["texBaseColor", "texBaseColor0"]:
                 color_image = nodes.new(type='ShaderNodeTexImage')
                 color_image.location = 0, 60
-                color_image.image = bpy.data.images.load(search_texture(textures_dir, texture_filename))
+                color_image.image = bpy.data.images.load(texture_file)
                 color_image.hide = True
 
                 albedo_principled = links.new(color_image.outputs['Color'], principled.inputs['Base Color'])
@@ -66,50 +77,50 @@ def construct_materials(pack_dir, material_packs):
             elif texture.mapType in ["texORM", "texORM0"]:
                 mask_image = nodes.new(type='ShaderNodeTexImage')
                 mask_image.location = 0, 0
-                mask_image.image = bpy.data.images.load(search_texture(textures_dir, texture_filename))
+                mask_image.image = bpy.data.images.load(texture_file)
                 mask_image.image.colorspace_settings.name = 'Non-Color'
                 mask_image.hide = True
 
-                sepRGB_shader = nodes.new(type="ShaderNodeSeparateRGB")
+                sepRGB_shader = nodes.new(type=sepRGB_name)
                 sepRGB_shader.location = 300, 0
                 sepRGB_shader.hide = True
 
-                mask_link = links.new(mask_image.outputs['Color'], sepRGB_shader.inputs['Image'])
-                roughness_link = links.new(sepRGB_shader.outputs['G'], principled.inputs['Roughness'])
-                metallic_link = links.new(sepRGB_shader.outputs['B'], principled.inputs['Metallic'])
+                mask_link = links.new(mask_image.outputs['Color'], sepRGB_shader.inputs[sepRGB_input])
+                roughness_link = links.new(sepRGB_shader.outputs[1], principled.inputs['Roughness'])
+                metallic_link = links.new(sepRGB_shader.outputs[2], principled.inputs['Metallic'])
 
             elif texture.mapType in ["texNormal", "texNormal0"]:
                 normal_image = nodes.new(type='ShaderNodeTexImage')
                 normal_image.location = -300, -60
-                normal_image.image = bpy.data.images.load(search_texture(textures_dir, texture_filename))
+                normal_image.image = bpy.data.images.load(texture_file)
                 normal_image.image.colorspace_settings.name = 'Non-Color'
                 normal_image.hide = True
 
-                sepRGB_shader = nodes.new(type="ShaderNodeSeparateRGB")
+                sepRGB_shader = nodes.new(type=sepRGB_name)
                 sepRGB_shader.location = -30, -60
                 sepRGB_shader.hide = True
 
-                normal_link = links.new(normal_image.outputs['Color'], sepRGB_shader.inputs['Image'])
+                normal_link = links.new(normal_image.outputs['Color'], sepRGB_shader.inputs[sepRGB_input])
 
                 invert_shader = nodes.new(type="ShaderNodeInvert")
                 invert_shader.location = 140, -90
                 invert_shader.hide = True
 
-                comRGB_shader = nodes.new(type="ShaderNodeCombineRGB")
+                comRGB_shader = nodes.new(type=comRGB_name)
                 comRGB_shader.location = 300, -60
                 comRGB_shader.hide = True
 
-                r_link = links.new(sepRGB_shader.outputs['R'], comRGB_shader.inputs['R'])
-                g_link = links.new(sepRGB_shader.outputs['G'], invert_shader.inputs['Color'])
-                b_link = links.new(sepRGB_shader.outputs['B'], comRGB_shader.inputs['B'])
+                r_link = links.new(sepRGB_shader.outputs[0], comRGB_shader.inputs[0])
+                g_link = links.new(sepRGB_shader.outputs[1], invert_shader.inputs['Color'])
+                b_link = links.new(sepRGB_shader.outputs[2], comRGB_shader.inputs[2])
 
-                gInverted_link = links.new(invert_shader.outputs['Color'], comRGB_shader.inputs['G'])
+                gInverted_link = links.new(invert_shader.outputs['Color'], comRGB_shader.inputs[1])
 
                 normalmap_shader = nodes.new(type='ShaderNodeNormalMap')
                 normalmap_shader.location = 600, -60
                 normalmap_shader.hide = True
                 
-                combined_link = links.new(comRGB_shader.outputs['Image'], normalmap_shader.inputs['Color'])
+                combined_link = links.new(comRGB_shader.outputs[comRGB_output], normalmap_shader.inputs['Color'])
                 normalmap_link = links.new(normalmap_shader.outputs['Normal'], principled.inputs['Normal'])
                 
 
@@ -118,7 +129,7 @@ def extract_textures(pack_dir, texture_packs: List[Pack], noesis_path, batch_siz
     extracted_textures_paths = []
 
     for texturePack in texture_packs:
-        print("Extracting textures...")
+        log.i("Extracting textures...")
 
         asset_pack_name = texturePack.assetPacks[0].name.replace(".xap", "")
 
@@ -201,7 +212,7 @@ def extract_textures(pack_dir, texture_packs: List[Pack], noesis_path, batch_siz
             # DXGI Format
             format = get_DXGI_format(texHead.header.XonSurfaceFormat)
             if format == None or format == "UNKNOWN":
-                print("Texture extraction failed!", assetFile.name)
+                log.w(f"Texture extraction failed! {assetFile.name}")
                 failed_texAsset.append(assetFile)
                 textureFile.close()
                 if assetFile.name == "":
@@ -229,16 +240,20 @@ def extract_textures(pack_dir, texture_packs: List[Pack], noesis_path, batch_siz
             extracted_textures_paths.append(textureFullPath)
             k += 1
 
+    if not os.path.isfile(noesis_path):
+        log.w("Noesis path is invalid or not set. Cancelling texture conversion...")
+        return failed_texAsset
+
     # Noesis Converting
     argPrograms = []
     for texturePack in texture_packs:
-        print("Batch converting textures from", texturePack.assetPacks[0].name, "with Noesis...")
+        log.i(f"Batch converting textures from {texturePack.assetPacks[0].name} with Noesis...")
         for texture_path in extracted_textures_paths:
             in_path = texture_path
             directory = os.path.dirname(in_path)
             converted_path = directory + "\\converted\\"
             out_path = converted_path + os.path.basename(in_path).replace(".dds", ".png")
-            print("Converting", texture_path, "to", out_path)
+            log.d(f"Converting {texture_path} to {out_path}")
             argProgram = []
             argProgram.append(noesis_path)
             argProgram.append("?cmode")
@@ -264,7 +279,7 @@ def extract_textures(pack_dir, texture_packs: List[Pack], noesis_path, batch_siz
 
 
 def debug_dump_texture(assetPackName, r2b_extracted_path, texHead: tpGxTexHead, texData, noesis_path, batch_size):
-    print("[DEBUG] Dumping textures for", assetPackName)
+    log.d(f"Dumping textures for {assetPackName}")
 
     debug_extracted_path = r2b_extracted_path + "\\debug"
 
@@ -364,7 +379,7 @@ def debug_dump_texture(assetPackName, r2b_extracted_path, texHead: tpGxTexHead, 
         directory = os.path.dirname(in_path)
         converted_path = directory + "\\converted\\"
         out_path = converted_path + os.path.basename(in_path).replace(".dds", ".png")
-        print("Converting", texture_path, "to", out_path)
+        log.d(f"Converting {texture_path} to {out_path}")
         argProgram = []
         argProgram.append(noesis_path)
         argProgram.append("?cmode")

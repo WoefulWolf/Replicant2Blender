@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Replicant2Blender (NieR Replicant ver.1.2247... Mesh Pack Importer)",
     "author": "Woeful_Wolf",
-    "version": (0, 6),
+    "version": (0, 6, 1),
     "blender": (4, 1, 0),
     "api": 38019,
     "location": "File > Import",
@@ -9,7 +9,8 @@ bl_info = {
     "warning": "",
     "wiki_url": "",
     "tracker_url": "",
-    "category": "Import-Export"}
+    "category": "Import-Export"
+}
 
 import bpy
 import os
@@ -17,7 +18,7 @@ from bpy_extras.io_utils import ExportHelper,ImportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty, CollectionProperty
 from bpy.types import Operator, OperatorFileListElement
 from . import pack_import
-
+from .util import log
 
 class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
     '''Import NieR Replicant Mesh Pack File(s)'''
@@ -29,7 +30,7 @@ class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
             type=OperatorFileListElement)
     directory: StringProperty(subtype='DIR_PATH')
     batch_size: bpy.props.IntProperty(name="Texture Conversion Batch Size", default=15, description="Batch sizes when converting textures. Higher values will be faster but require more CPU resources", min=1)
-    extract_textures: bpy.props.BoolProperty(name="Extract Textures (Slow)", description="This automatically extracts and converts textures to PNG (Requires the user to have setup Noesis in this add-on's preferences)", default=True)
+    extract_textures: bpy.props.BoolProperty(name="Extract Textures (Slow)", description="This automatically extracts and tries to convert textures to PNG (Conversion to PNG requires the user to have setup Noesis in this add-on's preferences)", default=True)
     construct_materials: bpy.props.BoolProperty(name="Construct Materials", description="This automatically sets up materials with the appropriate textures (Requires the user to have extracted the textures at least once before)", default=True)
     only_extract_textures: bpy.props.BoolProperty(name="Only Extract Textures", description="This can be used to simply extract the textures from a PACK containing some, nothing else will be done (Requires the user to have setup Noesis in this add-on's preferences)", default=False)
 
@@ -83,16 +84,20 @@ def replicant_import_mesh_pack(self, context):
     self.layout.operator(ImportReplicantMeshPack.bl_idname, text="NieR Replicant Mesh Pack(s)")
 
 def register():
+    log.d("Registering...")
     bpy.utils.register_class(ImportReplicantMeshPack)
     bpy.utils.register_class(SelectNoesisExecutable)
     bpy.types.TOPBAR_MT_file_import.append(replicant_import_mesh_pack)
     bpy.utils.register_class(Replicant2BlenderPreferences)
+    log.d("Registered")
 
 def unregister():
+    log.d("Unregistering...")
     bpy.utils.unregister_class(ImportReplicantMeshPack)
     bpy.utils.unregister_class(SelectNoesisExecutable)
     bpy.types.TOPBAR_MT_file_import.remove(replicant_import_mesh_pack)
     bpy.utils.unregister_class(Replicant2BlenderPreferences)
+    log.d("Unregistered")
 
 if __name__ == '__main__':
     register()

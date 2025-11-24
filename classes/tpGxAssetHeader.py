@@ -64,8 +64,8 @@ class UnknownAsset:
         for i in range(self.numMaterialParams):
             paramHeader = MaterialParamsHeader(packFile)
             if paramHeader.offsetParameters > fileSize:
-                print("[-] Material parameter offset exceeds file size!")
-                print("[-] Stopping parsing of material parameters.")
+                log.e("Material parameter offset exceeds file size!")
+                log.e("Stopping parsing of material parameters.")
                 break
             self.materialParamHeaders.append(paramHeader)
 
@@ -79,8 +79,8 @@ class UnknownAsset:
         for i in range(self.numTextures):
             texture = Texture(packFile)
             if texture.offsetFileName > fileSize:
-                print("[-] Texture filename offset exceeds file size!")
-                print("[-] Stopping parsing of texture filenames.")
+                log.e("Texture filename offset exceeds file size!")
+                log.e("Stopping parsing of texture filenames.")
                 break
             self.textures.append(texture)
 
@@ -89,8 +89,8 @@ class UnknownAsset:
         for i in range(self.numTPVars):
             tpVar = TPVar(packFile)
             if tpVar.offsetName > fileSize:
-                print("[-] TPVar name offset exceeds file size!")
-                print("[-] Stopping parsing of TPVar names.")
+                log.e("TPVar name offset exceeds file size!")
+                log.e("Stopping parsing of TPVar names.")
                 break
             self.tpVars.append(tpVar)
 
