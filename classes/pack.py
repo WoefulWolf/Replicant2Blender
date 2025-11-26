@@ -28,23 +28,38 @@ class Pack:
         self.offsetToFiles = to_uint(packFile.read(4))
         offsetFiles = packFile.tell() + self.offsetToFiles - 4
 
-        log.d(" - Pack Paths:")
         packFile.seek(offsetPaths)
         self.paths = []
         for i in range(self.pathCount):
             self.paths.append(Path(packFile))
+        log.d(" - Pack Paths:")
+        if len(self.paths) > 0:
+            for path in self.paths:
+                log.d(f"\t[+] {path.path}")
+        else:
+            log.d(f"\t\t None found.")
 
-        log.d(" - Pack AssetPacks:")
         packFile.seek(offsetAssetPacks)
         self.assetPacks: list[AssetPack] = []
         for i in range(self.assetPackCount):
             self.assetPacks.append(AssetPack(packFile))
+        log.d(" - Pack AssetPacks:")
+        if len(self.assetPacks) > 0:
+            for assetPack in self.assetPacks:
+                log.d(f"\t[+] {assetPack.name}")
+        else:
+            log.d(f"\t\t None found.")
 
-        log.d(" - Pack Files:")
         packFile.seek(offsetFiles)
         self.assetFiles: list[File] = []
         for i in range(self.fileCount):
             self.assetFiles.append(File(packFile))
+        log.d(" - Pack Files:")
+        if len(self.assetFiles) > 0:
+            for assetFile in self.assetFiles:
+                log.d(f"\t[+] {assetFile.name}")
+        else:
+            log.d(f"\t\t None found.")
 
         packFile.seek(self.packFileSerializedSize)
         self.meshData = []
@@ -65,8 +80,4 @@ class Pack:
 
             if ((packFile.tell() - self.packFileSerializedSize) % 32 != 0):
                 alignRelative(packFile, self.packFileSerializedSize, 32)
-
-
-        
-
-        
+                

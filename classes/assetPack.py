@@ -17,8 +17,6 @@ class AssetPack:
         packFile.seek(offsetName)
         self.name = to_string(packFile.read(1024))
 
-        log.d(f"\t[+] {self.name}")
-
         packFile.seek(offsetContentStart)
         fileID = packFile.read(4)
         packFile.seek(-4, 1)

@@ -112,7 +112,8 @@ def construct_materials(pack_dir, material_packs):
 
                 r_link = links.new(sepRGB_shader.outputs[0], comRGB_shader.inputs[0])
                 g_link = links.new(sepRGB_shader.outputs[1], invert_shader.inputs['Color'])
-                b_link = links.new(sepRGB_shader.outputs[2], comRGB_shader.inputs[2])
+                # b_link = links.new(sepRGB_shader.outputs[2], comRGB_shader.inputs[2])
+                comRGB_shader.inputs[2].default_value = 1.0
 
                 gInverted_link = links.new(invert_shader.outputs['Color'], comRGB_shader.inputs[1])
 
@@ -124,7 +125,7 @@ def construct_materials(pack_dir, material_packs):
                 normalmap_link = links.new(normalmap_shader.outputs['Normal'], principled.inputs['Normal'])
                 
 
-def extract_textures(pack_dir, texture_packs: List[Pack], noesis_path, batch_size):
+def extract_textures(pack_dir, texture_packs: List[Pack]):
     failed_texAsset = []
     extracted_textures_paths = []
 
@@ -216,7 +217,7 @@ def extract_textures(pack_dir, texture_packs: List[Pack], noesis_path, batch_siz
                 failed_texAsset.append(assetFile)
                 textureFile.close()
                 if assetFile.name == "":
-                    debug_dump_texture(assetPackName, r2b_extracted_path, texHead, texturePack.texData[k].data, noesis_path, batch_size)
+                    debug_dump_texture(assetPackName, r2b_extracted_path, texHead, texturePack.texData[k].data)
                 k += 1
                 continue
             else:
@@ -240,45 +241,36 @@ def extract_textures(pack_dir, texture_packs: List[Pack], noesis_path, batch_siz
             extracted_textures_paths.append(textureFullPath)
             k += 1
 
-    if not os.path.isfile(noesis_path):
-        log.w("Noesis path is invalid or not set. Cancelling texture conversion...")
-        return failed_texAsset
+    log.i("Texture extraction complete.")
 
-    # Noesis Converting
-    argPrograms = []
-    for texturePack in texture_packs:
-        log.i(f"Batch converting textures from {texturePack.assetPacks[0].name} with Noesis...")
-        for texture_path in extracted_textures_paths:
-            in_path = texture_path
-            directory = os.path.dirname(in_path)
-            converted_path = directory + "\\converted\\"
-            out_path = converted_path + os.path.basename(in_path).replace(".dds", ".png")
-            log.d(f"Converting {texture_path} to {out_path}")
-            argProgram = []
-            argProgram.append(noesis_path)
-            argProgram.append("?cmode")
-            argProgram.append(texture_path)
-            argProgram.append(out_path)
-            argPrograms.append(argProgram)
-    
-    processes = []
-    while len(argPrograms) > 0:
-        if len(argPrograms) < batch_size:
-            for argProg in argPrograms:
-                processes.append(subprocess.Popen(argProg, stdout=subprocess.DEVNULL))
-            argPrograms.clear()
-        else:
-            for i in range(batch_size):
-                processes.append(subprocess.Popen(argPrograms[i], stdout=subprocess.DEVNULL))
-            del argPrograms[:batch_size]
+    if extracted_textures_paths:
+        from puredds import DDS
+        log.i(f"Converting {len(extracted_textures_paths)} textures...")
 
-        for p in processes:
-            p.wait()
+        failed_conversions = 0
+        for idx, texture_path in enumerate(extracted_textures_paths):
+            try:
+                directory = os.path.dirname(texture_path)
+                converted_path = directory + "\\converted\\"
+                out_path = converted_path + os.path.basename(texture_path).replace(".dds", ".png")
 
+                log.d(f"Converting {idx+1}/{len(extracted_textures_paths)}: {os.path.basename(texture_path)}")
+
+                with open(texture_path, 'rb') as f:
+                    data = f.read()
+                dds = DDS.from_bytes(data)
+                image = dds.to_image()
+                image.save(out_path)
+            except Exception as e:
+                log.e(f"Failed to convert {texture_path}! Error: {e}")
+                failed_conversions += 1
+
+        success_count = len(extracted_textures_paths) - failed_conversions
+        log.i(f"Finished converting textures. Success: {success_count}/{len(extracted_textures_paths)}")
     return failed_texAsset
 
 
-def debug_dump_texture(assetPackName, r2b_extracted_path, texHead: tpGxTexHead, texData, noesis_path, batch_size):
+def debug_dump_texture(assetPackName, r2b_extracted_path, texHead: tpGxTexHead, texData):
     log.d(f"Dumping textures for {assetPackName}")
 
     debug_extracted_path = r2b_extracted_path + "\\debug"
@@ -369,34 +361,27 @@ def debug_dump_texture(assetPackName, r2b_extracted_path, texHead: tpGxTexHead, 
             textureFile.close()
             extracted_textures_paths.append(textureFullPath)
 
-    # Noesis Converting
-    if not os.path.isdir(debug_extracted_path + "\\converted"):
-        os.makedirs(debug_extracted_path + "\\converted")
-        
-    argPrograms = []
-    for texture_path in extracted_textures_paths:
-        in_path = texture_path
-        directory = os.path.dirname(in_path)
-        converted_path = directory + "\\converted\\"
-        out_path = converted_path + os.path.basename(in_path).replace(".dds", ".png")
-        log.d(f"Converting {texture_path} to {out_path}")
-        argProgram = []
-        argProgram.append(noesis_path)
-        argProgram.append("?cmode")
-        argProgram.append(texture_path)
-        argProgram.append(out_path)
-        argPrograms.append(argProgram)
-    
-    processes = []
-    while len(argPrograms) > 0:
-        if len(argPrograms) < batch_size:
-            for argProg in argPrograms:
-                processes.append(subprocess.Popen(argProg, stdout=subprocess.DEVNULL))
-            argPrograms.clear()
-        else:
-            for i in range(batch_size):
-                processes.append(subprocess.Popen(argPrograms[i], stdout=subprocess.DEVNULL))
-            del argPrograms[:batch_size]
+    if extracted_textures_paths:
+        from puredds import DDS
+        log.i(f"Converting {len(extracted_textures_paths)} textures...")
 
-        for p in processes:
-            p.wait()
+        failed_conversions = 0
+        for idx, texture_path in enumerate(extracted_textures_paths):
+            try:
+                directory = os.path.dirname(texture_path)
+                converted_path = directory + "\\converted\\"
+                out_path = converted_path + os.path.basename(texture_path).replace(".dds", ".png")
+
+                log.d(f"Converting {idx+1}/{len(extracted_textures_paths)}: {os.path.basename(texture_path)}")
+
+                with open(texture_path, 'rb') as f:
+                    data = f.read()
+                dds = DDS.from_bytes(data)
+                image = dds.to_image()
+                image.save(out_path)
+            except Exception as e:
+                log.e(f"Failed to convert {texture_path}! Error: {e}")
+                failed_conversions += 1
+
+        success_count = len(extracted_textures_paths) - failed_conversions
+        log.i(f"Finished converting textures. Success: {success_count}/{len(extracted_textures_paths)}")

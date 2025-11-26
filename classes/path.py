@@ -14,5 +14,3 @@ class Path:
         self.path = to_string(packFile.read(1024))
 
         packFile.seek(returnPos)
-
-        log.d(f"\t[+] {self.path}")

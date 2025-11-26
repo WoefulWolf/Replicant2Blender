@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
-id = "Replicant2Blender"
-version = "0.6.1"
+id = "replicant2blender"
+version = "0.7.0"
 name = "Replicant2Blender (NieR Replicant ver.1.2247... Mesh Pack Importer)"
 tagline = "Import NieR Replicant Mesh Pack"
 maintainer = "Woeful_Wolf"
@@ -15,7 +15,28 @@ license = [
   "SPDX:GPL-3.0-or-later",
 ]
 
-wheels = []
+wheels = [
+  "./wheels/llvmlite-0.45.1-cp311-cp311-macosx_11_0_arm64.whl",
+  "./wheels/llvmlite-0.45.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+  "./wheels/llvmlite-0.45.1-cp311-cp311-win_amd64.whl",
+  "./wheels/numba-0.62.1-cp311-cp311-macosx_11_0_arm64.whl",
+  "./wheels/numba-0.62.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+  "./wheels/numba-0.62.1-cp311-cp311-win_amd64.whl",
+  "./wheels/numpy-2.2.6-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+  "./wheels/numpy-2.3.5-cp311-cp311-macosx_11_0_arm64.whl",
+  "./wheels/numpy-2.3.5-cp311-cp311-win_amd64.whl",
+  "./wheels/pillow-12.0.0-cp311-cp311-macosx_11_0_arm64.whl",
+  "./wheels/pillow-12.0.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+  "./wheels/pillow-12.0.0-cp311-cp311-win_amd64.whl",
+  "./wheels/puredds-0.2.0-py3-none-any.whl"
+]
 
 [permissions]
 files = "Import NieR Replicant Mesh Pack from disk"
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  ".*",
+  "*.zip",
+]

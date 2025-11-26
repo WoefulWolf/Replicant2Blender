@@ -31,5 +31,3 @@ class BXON:
             self.levelData = LevelData(packFile)
 
         packFile.seek(returnPos)
-
-        log.d(f"\t\t> {self.fileTypeName}")

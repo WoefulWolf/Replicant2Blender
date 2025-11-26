@@ -14,7 +14,7 @@ def clear_importLists():
     imported_materialPacks.clear()
     imported_texturePacks.clear()
 
-def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, addon_name):
+def main(packFilePath, do_extract_textures, do_construct_materials, addon_name):
     pack_directory = os.path.dirname(os.path.abspath(packFilePath))
 
     # meshPack
@@ -29,7 +29,6 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
     # Import materials + textures
     failedTexturesAssets = []
     if do_extract_textures or do_construct_materials:
-        noesis_path = bpy.context.preferences.addons[addon_name].preferences.noesis_path
 
         # materialPacks
         materialPacks = []
@@ -65,7 +64,7 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
                     else:
                         if (texturePackFullPath not in failed_texturePacks):
                             failed_texturePacks.append(texturePackFullPath)
-                            log.w(f"Failed to find texture PACK file. {texturePackFilename}")
+                            log.w(f"Failed to find texture PACK file: {texturePackFilename}")
                         continue
 
                 if (texturePackFullPath not in imported_texturePacks):
@@ -75,7 +74,7 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
                         texturePacks.append(Pack(packFile))
 
         if do_extract_textures:
-            failedTexturesAssets = extract_textures(pack_directory, texturePacks, noesis_path, batch_size)
+            failedTexturesAssets = extract_textures(pack_directory, texturePacks)
 
         if do_construct_materials:
             construct_materials(pack_directory, materialPacks)
@@ -90,17 +89,13 @@ def main(packFilePath, do_extract_textures, do_construct_materials, batch_size, 
     else:
         log.i('Importing finished. ;)')
 
-def only_extract_textures(packFilePath, batch_size, addon_name):
+def only_extract_textures(packFilePath, addon_name):
     pack_directory = os.path.dirname(os.path.abspath(packFilePath))
-    noesis_path = bpy.context.preferences.addons[addon_name].preferences.noesis_path
-    if not os.path.isfile(noesis_path):
-        log.e("Noesis path is not set or invalid. Cancelling texture import!")
-        return {"FAILED"}
 
     packFile = open(packFilePath, "rb")
     texturePack = Pack(packFile)
     packFile.close()
-    failedTexturesAssets = extract_textures(pack_directory, [texturePack], noesis_path, batch_size)
+    failedTexturesAssets = extract_textures(pack_directory, [texturePack])
 
     if len(failedTexturesAssets) > 0:
         log.e("Some textures failed to extract!")
