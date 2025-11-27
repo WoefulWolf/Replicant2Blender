@@ -8,6 +8,7 @@ from ..classes.pack import Pack
 from ..classes.tpGxAssetHeader import UnknownAsset
 from ..classes.tpGxTexHead import tpGxTexHead
 from .materials.master_rs_layer4 import master_rs_layer4
+from .materials.nodes import dx_to_gl_normal, grid_location
 from numpy import uint
 from ..util import *
 
@@ -52,9 +53,9 @@ def construct_materials(pack_dir, material_packs):
         material.blend_method = 'CLIP'
 
         output = nodes.new(type='ShaderNodeOutputMaterial')
-        output.location = 1200,0
+        output.location = grid_location(4, 0)
         principled = nodes.new(type='ShaderNodeBsdfPrincipled')
-        principled.location = 900,0
+        principled.location = grid_location(3, 0)
         output_link = links.new( principled.outputs['BSDF'], output.inputs['Surface'])
 
         for texture in materialAsset.textures:
@@ -67,7 +68,7 @@ def construct_materials(pack_dir, material_packs):
 
             if texture.mapType in ["texBaseColor", "texBaseColor0"]:
                 color_image = nodes.new(type='ShaderNodeTexImage')
-                color_image.location = 0, 60
+                color_image.location = grid_location(0, 0)
                 color_image.image = bpy.data.images.load(texture_file)
                 color_image.hide = True
 
@@ -76,52 +77,51 @@ def construct_materials(pack_dir, material_packs):
 
             elif texture.mapType in ["texORM", "texORM0"]:
                 mask_image = nodes.new(type='ShaderNodeTexImage')
-                mask_image.location = 0, 0
+                mask_image.location = grid_location(0, 1)
                 mask_image.image = bpy.data.images.load(texture_file)
                 mask_image.image.colorspace_settings.name = 'Non-Color'
                 mask_image.hide = True
 
                 sepRGB_shader = nodes.new(type=sepRGB_name)
-                sepRGB_shader.location = 300, 0
+                sepRGB_shader.location = grid_location(1, 1)
                 sepRGB_shader.hide = True
-
                 mask_link = links.new(mask_image.outputs['Color'], sepRGB_shader.inputs[sepRGB_input])
+
+                # Ambient Occlusion
+                try:
+                    ao_multiply: bpy.types.ShaderNodeMixRGB = nodes.new('ShaderNodeMixRGB')
+                    ao_multiply.location = grid_location(2, 0)
+                    ao_multiply.hide = True
+                    ao_multiply.blend_type = 'MULTIPLY'
+                    ao_multiply.inputs[0].default_value = 1.0
+                    links.new(color_image.outputs['Color'], ao_multiply.inputs[1])
+                    links.new(sepRGB_shader.outputs['Red'], ao_multiply.inputs[2])
+                    links.new(ao_multiply.outputs['Color'], principled.inputs['Base Color'])
+                except:
+                    log.e(f"Could not setup AO for material: {b_mat_name}")
+
                 roughness_link = links.new(sepRGB_shader.outputs[1], principled.inputs['Roughness'])
                 metallic_link = links.new(sepRGB_shader.outputs[2], principled.inputs['Metallic'])
 
             elif texture.mapType in ["texNormal", "texNormal0"]:
                 normal_image = nodes.new(type='ShaderNodeTexImage')
-                normal_image.location = -300, -60
+                normal_image.location = grid_location(0, 2)
                 normal_image.image = bpy.data.images.load(texture_file)
                 normal_image.image.colorspace_settings.name = 'Non-Color'
                 normal_image.hide = True
 
-                sepRGB_shader = nodes.new(type=sepRGB_name)
-                sepRGB_shader.location = -30, -60
-                sepRGB_shader.hide = True
-
-                normal_link = links.new(normal_image.outputs['Color'], sepRGB_shader.inputs[sepRGB_input])
-
-                invert_shader = nodes.new(type="ShaderNodeInvert")
-                invert_shader.location = 140, -90
-                invert_shader.hide = True
-
-                comRGB_shader = nodes.new(type=comRGB_name)
-                comRGB_shader.location = 300, -60
-                comRGB_shader.hide = True
-
-                r_link = links.new(sepRGB_shader.outputs[0], comRGB_shader.inputs[0])
-                g_link = links.new(sepRGB_shader.outputs[1], invert_shader.inputs['Color'])
-                # b_link = links.new(sepRGB_shader.outputs[2], comRGB_shader.inputs[2])
-                comRGB_shader.inputs[2].default_value = 1.0
-
-                gInverted_link = links.new(invert_shader.outputs['Color'], comRGB_shader.inputs[1])
+                # Convert DirectX normal to OpenGL
+                normal_convert = nodes.new('ShaderNodeGroup')
+                normal_convert.node_tree = dx_to_gl_normal()
+                normal_convert.location = grid_location(1, 2)
+                normal_convert.hide = True
+                links.new(normal_image.outputs['Color'], normal_convert.inputs['Color'])
 
                 normalmap_shader = nodes.new(type='ShaderNodeNormalMap')
-                normalmap_shader.location = 600, -60
+                normalmap_shader.location = grid_location(2, 2)
                 normalmap_shader.hide = True
                 
-                combined_link = links.new(comRGB_shader.outputs[comRGB_output], normalmap_shader.inputs['Color'])
+                combined_link = links.new(normal_convert.outputs[0], normalmap_shader.inputs['Color'])
                 normalmap_link = links.new(normalmap_shader.outputs['Normal'], principled.inputs['Normal'])
                 
 
@@ -144,9 +144,11 @@ def extract_textures(pack_dir, texture_packs: List[Pack]):
             os.makedirs(converted_path)
 
         k = 0
-        for assetFile in texturePack.assetFiles:
+        for idx, assetFile in enumerate(texturePack.assetFiles):
             if ".rtex" not in assetFile.name:
-                    continue
+                log.w(f"{assetFile.name} is not a texture. Skipping...")
+                continue
+            log.d(f"Extracting {idx+1}/{len(texturePack.assetFiles)}: {assetFile.name}")
             texHead = assetFile.content.texHead
             assetPackName = assetFile.name.replace(".rtex", "")
             textureFilename = assetPackName + ".dds"
@@ -241,7 +243,7 @@ def extract_textures(pack_dir, texture_packs: List[Pack]):
             extracted_textures_paths.append(textureFullPath)
             k += 1
 
-    log.i("Texture extraction complete.")
+    log.i(f"Finished extracting {len(extracted_textures_paths)} textures.")
 
     if extracted_textures_paths:
         from puredds import DDS

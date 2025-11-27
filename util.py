@@ -145,6 +145,47 @@ def search_texture(textures_dir, texture_filename):
                 return os.path.join(root, file)
     return None
 
+def show_blender_system_console():
+	import os
+	if os.name != 'nt':
+		return
+	
+	import ctypes
+	from ctypes import wintypes
+
+	EnumWindows = ctypes.windll.user32.EnumWindows
+	EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+	IsWindowVisible = ctypes.windll.user32.IsWindowVisible
+	GetWindowText = ctypes.windll.user32.GetWindowTextW
+	GetWindowTextLength = ctypes.windll.user32.GetWindowTextLengthW
+	SetForegroundWindow = ctypes.windll.user32.SetForegroundWindow
+
+	windows = []
+	def foreach_window(hwnd, lParam):
+		if IsWindowVisible(hwnd):
+			length = GetWindowTextLength(hwnd)
+			if length > 0:
+				title = ctypes.create_unicode_buffer(length + 1)
+				GetWindowText(hwnd, title, length + 1)
+				windows.append((hwnd, title.value))
+		return True
+
+	EnumWindows(EnumWindowsProc(foreach_window), 0)
+
+	system_console = None
+	for hwnd, title in windows:
+		if "blender.exe" in title:
+			system_console = hwnd
+			break
+
+	if system_console is not None and IsWindowVisible(system_console):
+		log.d("System Console already open, bringing to foreground...")
+		SetForegroundWindow(system_console)
+	else:
+		log.d("Opening system console...")
+		import bpy
+		bpy.ops.wm.console_toggle()
+
 class Logger:
     def __init__(self, name):
         self.name = name

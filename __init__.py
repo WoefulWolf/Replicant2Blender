@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Replicant2Blender (NieR Replicant ver.1.2247... Mesh Pack Importer)",
     "author": "Woeful_Wolf",
-    "version": (0, 7, 0),
+    "version": (0, 7, 1),
     "blender": (4, 1, 0),
     "api": 38019,
     "location": "File > Import",
@@ -18,7 +18,7 @@ from bpy_extras.io_utils import ExportHelper,ImportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty, CollectionProperty
 from bpy.types import Operator, OperatorFileListElement
 from . import pack_import
-from .util import log
+from .util import log, show_blender_system_console
 
 class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
     '''Import NieR Replicant Mesh Pack File(s)'''
@@ -38,6 +38,7 @@ class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
         for file_elem in self.files:
             filepath = os.path.join(directory, file_elem.name)
             if os.path.isfile(filepath):
+                show_blender_system_console()
                 if self.only_extract_textures:
                     pack_import.only_extract_textures(filepath, __name__)
                 else:

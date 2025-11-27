@@ -1,8 +1,8 @@
 import bpy
 
 from ...util import search_texture, log
-
 from ...classes.tpGxAssetHeader import UnknownAsset
+from .nodes import dx_to_gl_normal, grid_location
 
 def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     # Renamed in 5.0
@@ -26,17 +26,17 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
 
     # Output
     output = nodes.new(type='ShaderNodeOutputMaterial')
-    output.location = 2400, 0
+    output.location = grid_location(8, 0)
 
     # Principled BSDF
     principled = nodes.new(type='ShaderNodeBsdfPrincipled')
-    principled.location = 2100, 0
+    principled.location = grid_location(7, 0)
     links.new(principled.outputs['BSDF'], output.inputs['Surface'])
 
     # Mask
     mask_uv = nodes.new(type='ShaderNodeUVMap')
     mask_uv.uv_map = 'UVMap1'
-    mask_uv.location = -900, 800
+    mask_uv.location = grid_location(-3, -10)
     mask_uv.hide = True
 
     mask_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texLayerMask"), None)
@@ -47,13 +47,13 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     mask_image = nodes.new(type='ShaderNodeTexImage')
     mask_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[mask_texture_index]))
     mask_image.image.colorspace_settings.name = 'Non-Color'
-    mask_image.location = -600, 800
+    mask_image.location = grid_location(-2, -10)
     mask_image.hide = True
 
     links.new(mask_uv.outputs['UV'], mask_image.inputs['Vector'])
 
     mask_sep = nodes.new(type=sepRGB_name)
-    mask_sep.location = -300, 800
+    mask_sep.location = grid_location(-1, -10)
     mask_sep.hide = True
     links.new(mask_image.outputs['Color'], mask_sep.inputs[sepRGB_input])
 
@@ -64,7 +64,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         return
     color_0_image = nodes.new(type='ShaderNodeTexImage')
     color_0_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[color_0_texture_index]))
-    color_0_image.location = -600, 600
+    color_0_image.location = grid_location(-2, -8)
     color_0_image.hide = True
 
     # Color 1
@@ -74,7 +74,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         return
     color_1_image = nodes.new(type='ShaderNodeTexImage')
     color_1_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[color_1_texture_index]))
-    color_1_image.location = -600, 450
+    color_1_image.location = grid_location(-2, -6)
     color_1_image.hide = True
 
     # Color 2
@@ -84,7 +84,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         return
     color_2_image = nodes.new(type='ShaderNodeTexImage')
     color_2_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[color_2_texture_index]))
-    color_2_image.location = -600, 300
+    color_2_image.location = grid_location(-2, -4)
     color_2_image.hide = True
 
     # Color 3
@@ -94,12 +94,12 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
         return
     color_3_image = nodes.new(type='ShaderNodeTexImage')
     color_3_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[color_3_texture_index]))
-    color_3_image.location = -600, 150
+    color_3_image.location = grid_location(-2, -2)
     color_3_image.hide = True
 
     # Mix Color 0-1
     mix_col_01 = nodes.new(type='ShaderNodeMixRGB')
-    mix_col_01.location = 200, 525
+    mix_col_01.location = grid_location(1, -7)
     mix_col_01.hide = True
     links.new(mask_sep.outputs[0], mix_col_01.inputs['Fac'])
     links.new(color_0_image.outputs['Color'], mix_col_01.inputs['Color1'])
@@ -107,7 +107,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
 
     # Mix Color 0-1-2
     mix_col_012 = nodes.new(type='ShaderNodeMixRGB')
-    mix_col_012.location = 600, 450
+    mix_col_012.location = grid_location(2, -6)
     mix_col_012.hide = True
     links.new(mask_sep.outputs[1], mix_col_012.inputs['Fac'])
     links.new(mix_col_01.outputs['Color'], mix_col_012.inputs['Color1'])
@@ -115,7 +115,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
 
     # Mix Color 0-1-2-3
     mix_col_0123 = nodes.new(type='ShaderNodeMixRGB')
-    mix_col_0123.location = 1000, 400
+    mix_col_0123.location = grid_location(3, -5)
     mix_col_0123.hide = True
     links.new(mask_sep.outputs[2], mix_col_0123.inputs['Fac'])
     links.new(mix_col_012.outputs['Color'], mix_col_0123.inputs['Color1'])
@@ -131,11 +131,11 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     orm_0_image = nodes.new(type='ShaderNodeTexImage')
     orm_0_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[orm_0_texture_index]))
     orm_0_image.image.colorspace_settings.name = 'Non-Color'
-    orm_0_image.location = -600, 0
+    orm_0_image.location = grid_location(-2, 0)
     orm_0_image.hide = True
 
     orm_0_sep = nodes.new(type=sepRGB_name)
-    orm_0_sep.location = -300, 0
+    orm_0_sep.location = grid_location(-1, 0)
     orm_0_sep.hide = True
     links.new(orm_0_image.outputs['Color'], orm_0_sep.inputs[sepRGB_input])
 
@@ -147,11 +147,11 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     orm_1_image = nodes.new(type='ShaderNodeTexImage')
     orm_1_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[orm_1_texture_index]))
     orm_1_image.image.colorspace_settings.name = 'Non-Color'
-    orm_1_image.location = -600, -150
+    orm_1_image.location = grid_location(-2, 2)
     orm_1_image.hide = True
 
     orm_1_sep = nodes.new(type=sepRGB_name)
-    orm_1_sep.location = -300, -150
+    orm_1_sep.location = grid_location(-1, 2)
     orm_1_sep.hide = True
     links.new(orm_1_image.outputs['Color'], orm_1_sep.inputs[sepRGB_input])
 
@@ -163,11 +163,11 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     orm_2_image = nodes.new(type='ShaderNodeTexImage')
     orm_2_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[orm_2_texture_index]))
     orm_2_image.image.colorspace_settings.name = 'Non-Color'
-    orm_2_image.location = -600, -300
+    orm_2_image.location = grid_location(-2, 4)
     orm_2_image.hide = True
 
     orm_2_sep = nodes.new(type=sepRGB_name)
-    orm_2_sep.location = -300, -300
+    orm_2_sep.location = grid_location(-1, 4)
     orm_2_sep.hide = True
     links.new(orm_2_image.outputs['Color'], orm_2_sep.inputs[sepRGB_input])
 
@@ -179,91 +179,102 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     orm_3_image = nodes.new(type='ShaderNodeTexImage')
     orm_3_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[orm_3_texture_index]))
     orm_3_image.image.colorspace_settings.name = 'Non-Color'
-    orm_3_image.location = -600, -450
+    orm_3_image.location = grid_location(-2, 6)
     orm_3_image.hide = True
 
     orm_3_sep = nodes.new(type=sepRGB_name)
-    orm_3_sep.location = -300, -450
+    orm_3_sep.location = grid_location(-1, 6)
     orm_3_sep.hide = True
     links.new(orm_3_image.outputs['Color'], orm_3_sep.inputs[sepRGB_input])
 
     # Mix O 0-1
-    mix_o_01 = nodes.new(type='ShaderNodeMixRGB')
-    mix_o_01.location = 200, -75
+    mix_o_01 = nodes.new(type='ShaderNodeMix')
+    mix_o_01.location = grid_location(1, 1)
     mix_o_01.hide = True
-    links.new(mask_sep.outputs[0], mix_o_01.inputs['Fac'])
-    links.new(orm_0_sep.outputs[0], mix_o_01.inputs['Color1'])
-    links.new(orm_1_sep.outputs[0], mix_o_01.inputs['Color2'])
+    links.new(mask_sep.outputs[0], mix_o_01.inputs['Factor'])
+    links.new(orm_0_sep.outputs[0], mix_o_01.inputs['A'])
+    links.new(orm_1_sep.outputs[0], mix_o_01.inputs['B'])
 
     # Mix O 0-1-2
-    mix_o_012 = nodes.new(type='ShaderNodeMixRGB')
-    mix_o_012.location = 600, -150
+    mix_o_012 = nodes.new(type='ShaderNodeMix')
+    mix_o_012.location = grid_location(2, 2)
     mix_o_012.hide = True
-    links.new(mask_sep.outputs[1], mix_o_012.inputs['Fac'])
-    links.new(mix_o_01.outputs['Color'], mix_o_012.inputs['Color1'])
-    links.new(orm_2_sep.outputs[0], mix_o_012.inputs['Color2'])
+    links.new(mask_sep.outputs[1], mix_o_012.inputs['Factor'])
+    links.new(mix_o_01.outputs[0], mix_o_012.inputs['A'])
+    links.new(orm_2_sep.outputs[0], mix_o_012.inputs['B'])
 
     # Mix O 0-1-2-3
-    mix_o_0123 = nodes.new(type='ShaderNodeMixRGB')
-    mix_o_0123.location = 1000, -200
+    mix_o_0123 = nodes.new(type='ShaderNodeMix')
+    mix_o_0123.location = grid_location(3, 3)
     mix_o_0123.hide = True
-    links.new(mask_sep.outputs[2], mix_o_0123.inputs['Fac'])
-    links.new(mix_o_012.outputs['Color'], mix_o_0123.inputs['Color1'])
-    links.new(orm_3_sep.outputs[0], mix_o_0123.inputs['Color2'])
+    links.new(mask_sep.outputs[2], mix_o_0123.inputs['Factor'])
+    links.new(mix_o_012.outputs[0], mix_o_0123.inputs['A'])
+    links.new(orm_3_sep.outputs[0], mix_o_0123.inputs['B'])
+
+    # Ambient Occlusion
+    ao_multiply = nodes.new('ShaderNodeMixRGB')
+    ao_multiply.location = grid_location(4, 3)
+    ao_multiply.hide = True
+    ao_multiply.blend_type = 'MULTIPLY'
+    ao_multiply.inputs[0].default_value = 1.0
+    links.new(mix_col_0123.outputs['Color'], ao_multiply.inputs[1])
+    links.new(mix_o_0123.outputs[0], ao_multiply.inputs[2])
+
+    links.new(ao_multiply.outputs['Color'], principled.inputs['Base Color'])
 
     # Mix R 0-1
-    mix_r_01 = nodes.new(type='ShaderNodeMixRGB')
-    mix_r_01.location = 200, -225
+    mix_r_01 = nodes.new(type='ShaderNodeMix')
+    mix_r_01.location = grid_location(1, 3)
     mix_r_01.hide = True
-    links.new(mask_sep.outputs[0], mix_r_01.inputs['Fac'])
-    links.new(orm_0_sep.outputs[1], mix_r_01.inputs['Color1'])
-    links.new(orm_1_sep.outputs[1], mix_r_01.inputs['Color2'])
+    links.new(mask_sep.outputs[0], mix_r_01.inputs['Factor'])
+    links.new(orm_0_sep.outputs[1], mix_r_01.inputs['A'])
+    links.new(orm_1_sep.outputs[1], mix_r_01.inputs['B'])
 
     # Mix R 0-1-2
-    mix_r_012 = nodes.new(type='ShaderNodeMixRGB')
-    mix_r_012.location = 600, -300
+    mix_r_012 = nodes.new(type='ShaderNodeMix')
+    mix_r_012.location = grid_location(2, 4)
     mix_r_012.hide = True
-    links.new(mask_sep.outputs[1], mix_r_012.inputs['Fac'])
-    links.new(mix_r_01.outputs['Color'], mix_r_012.inputs['Color1'])
-    links.new(orm_2_sep.outputs[1], mix_r_012.inputs['Color2'])
+    links.new(mask_sep.outputs[1], mix_r_012.inputs['Factor'])
+    links.new(mix_r_01.outputs[0], mix_r_012.inputs['A'])
+    links.new(orm_2_sep.outputs[1], mix_r_012.inputs['B'])
 
     # Mix R 0-1-2-3
-    mix_r_0123 = nodes.new(type='ShaderNodeMixRGB')
-    mix_r_0123.location = 1000, -350
+    mix_r_0123 = nodes.new(type='ShaderNodeMix')
+    mix_r_0123.location = grid_location(3, 4)
     mix_r_0123.hide = True
-    links.new(mask_sep.outputs[2], mix_r_0123.inputs['Fac'])
-    links.new(mix_r_012.outputs['Color'], mix_r_0123.inputs['Color1'])
-    links.new(orm_3_sep.outputs[1], mix_r_0123.inputs['Color2'])
+    links.new(mask_sep.outputs[2], mix_r_0123.inputs['Factor'])
+    links.new(mix_r_012.outputs[0], mix_r_0123.inputs['A'])
+    links.new(orm_3_sep.outputs[1], mix_r_0123.inputs['B'])
 
     # Roughness
-    links.new(mix_r_0123.outputs['Color'], principled.inputs['Roughness'])
+    links.new(mix_r_0123.outputs[0], principled.inputs['Roughness'])
 
     # Mix M 0-1
-    mix_m_01 = nodes.new(type='ShaderNodeMixRGB')
-    mix_m_01.location = 200, -375
+    mix_m_01 = nodes.new(type='ShaderNodeMix')
+    mix_m_01.location = grid_location(1, 5)
     mix_m_01.hide = True
-    links.new(mask_sep.outputs[0], mix_m_01.inputs['Fac'])
-    links.new(orm_0_sep.outputs[2], mix_m_01.inputs['Color1'])
-    links.new(orm_1_sep.outputs[2], mix_m_01.inputs['Color2'])
+    links.new(mask_sep.outputs[0], mix_m_01.inputs['Factor'])
+    links.new(orm_0_sep.outputs[2], mix_m_01.inputs['A'])
+    links.new(orm_1_sep.outputs[2], mix_m_01.inputs['B'])
 
     # Mix M 0-1-2
-    mix_m_012 = nodes.new(type='ShaderNodeMixRGB')
-    mix_m_012.location = 600, -450
+    mix_m_012 = nodes.new(type='ShaderNodeMix')
+    mix_m_012.location = grid_location(2, 6)
     mix_m_012.hide = True
-    links.new(mask_sep.outputs[1], mix_m_012.inputs['Fac'])
-    links.new(mix_m_01.outputs['Color'], mix_m_012.inputs['Color1'])
-    links.new(orm_2_sep.outputs[2], mix_m_012.inputs['Color2'])
+    links.new(mask_sep.outputs[1], mix_m_012.inputs['Factor'])
+    links.new(mix_m_01.outputs[0], mix_m_012.inputs['A'])
+    links.new(orm_2_sep.outputs[2], mix_m_012.inputs['B'])
 
     # Mix M 0-1-2-3
-    mix_m_0123 = nodes.new(type='ShaderNodeMixRGB')
-    mix_m_0123.location = 1000, -500
+    mix_m_0123 = nodes.new(type='ShaderNodeMix')
+    mix_m_0123.location = grid_location(3, 6)
     mix_m_0123.hide = True
-    links.new(mask_sep.outputs[2], mix_m_0123.inputs['Fac'])
-    links.new(mix_m_012.outputs['Color'], mix_m_0123.inputs['Color1'])
-    links.new(orm_3_sep.outputs[2], mix_m_0123.inputs['Color2'])
+    links.new(mask_sep.outputs[2], mix_m_0123.inputs['Factor'])
+    links.new(mix_m_012.outputs[0], mix_m_0123.inputs['A'])
+    links.new(orm_3_sep.outputs[2], mix_m_0123.inputs['B'])
 
     # Metallic
-    links.new(mix_m_0123.outputs['Color'], principled.inputs['Metallic'])
+    links.new(mix_m_0123.outputs[0], principled.inputs['Metallic'])
 
     # Normal 0
     normal_0_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texNormal0"), None)
@@ -273,7 +284,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     normal_0_image = nodes.new(type='ShaderNodeTexImage')
     normal_0_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[normal_0_texture_index]))
     normal_0_image.image.colorspace_settings.name = 'Non-Color'
-    normal_0_image.location = -600, -700
+    normal_0_image.location = grid_location(-2, 9)
     normal_0_image.hide = True
 
     # Normal 1
@@ -284,7 +295,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     normal_1_image = nodes.new(type='ShaderNodeTexImage')
     normal_1_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[normal_1_texture_index]))
     normal_1_image.image.colorspace_settings.name = 'Non-Color'
-    normal_1_image.location = -600, -850
+    normal_1_image.location = grid_location(-2, 11)
     normal_1_image.hide = True
 
     # Normal 2
@@ -295,7 +306,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     normal_2_image = nodes.new(type='ShaderNodeTexImage')
     normal_2_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[normal_2_texture_index]))
     normal_2_image.image.colorspace_settings.name = 'Non-Color'
-    normal_2_image.location = -600, -1000
+    normal_2_image.location = grid_location(-2, 13)
     normal_2_image.hide = True
 
     # Normal 3
@@ -306,12 +317,12 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     normal_3_image = nodes.new(type='ShaderNodeTexImage')
     normal_3_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[normal_3_texture_index]))
     normal_3_image.image.colorspace_settings.name = 'Non-Color'
-    normal_3_image.location = -600, -1150
+    normal_3_image.location = grid_location(-2, 14)
     normal_3_image.hide = True
 
     # Mix Normal 0-1
     mix_normal_01 = nodes.new(type='ShaderNodeMixRGB')
-    mix_normal_01.location = 200, -775
+    mix_normal_01.location = grid_location(1, 10)
     mix_normal_01.hide = True
     links.new(mask_sep.outputs[0], mix_normal_01.inputs['Fac'])
     links.new(normal_0_image.outputs['Color'], mix_normal_01.inputs['Color1'])
@@ -319,7 +330,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
 
     # Mix Normal 0-1-2
     mix_normal_012 = nodes.new(type='ShaderNodeMixRGB')
-    mix_normal_012.location = 600, -900
+    mix_normal_012.location = grid_location(2, 11)
     mix_normal_012.hide = True
     links.new(mask_sep.outputs[1], mix_normal_012.inputs['Fac'])
     links.new(mix_normal_01.outputs['Color'], mix_normal_012.inputs['Color1'])
@@ -327,36 +338,23 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
 
     # Mix Normal 0-1-2-3
     mix_normal_0123 = nodes.new(type='ShaderNodeMixRGB')
-    mix_normal_0123.location = 1000, -1000
+    mix_normal_0123.location = grid_location(3, 13)
     mix_normal_0123.hide = True
     links.new(mask_sep.outputs[2], mix_normal_0123.inputs['Fac'])
     links.new(mix_normal_012.outputs['Color'], mix_normal_0123.inputs['Color1'])
     links.new(normal_3_image.outputs['Color'], mix_normal_0123.inputs['Color2'])
 
-    # Separate Normal
-    sepRGB_shader = nodes.new(type=sepRGB_name)
-    sepRGB_shader.location = 1300, -1000
-    sepRGB_shader.hide = True
-    links.new(mix_normal_0123.outputs['Color'], sepRGB_shader.inputs[sepRGB_input])
-
-    # Invert Normal Green
-    invert_shader = nodes.new(type="ShaderNodeInvert")
-    invert_shader.location = 1500, -1050
-    invert_shader.hide = True
-    links.new(sepRGB_shader.outputs[1], invert_shader.inputs['Color'])
-
-    # Combine Normal
-    comRGB_shader = nodes.new(type=comRGB_name)
-    comRGB_shader.location = 1700, -1000
-    comRGB_shader.hide = True
-    comRGB_shader.inputs[2].default_value = 1.0
-    links.new(sepRGB_shader.outputs[0], comRGB_shader.inputs[0])
-    links.new(invert_shader.outputs['Color'], comRGB_shader.inputs[1])
+    # Convert DirectX normal to OpenGL
+    normal_convert = nodes.new('ShaderNodeGroup')
+    normal_convert.node_tree = dx_to_gl_normal()
+    normal_convert.location = grid_location(4, 13)
+    normal_convert.hide = True
+    links.new(mix_normal_0123.outputs['Color'], normal_convert.inputs['Color'])
 
     # Normal Map
     normal_map = nodes.new(type='ShaderNodeNormalMap')
-    normal_map.location = 1900, -1000
+    normal_map.location = grid_location(6, 13)
     normal_map.hide = True
-    links.new(comRGB_shader.outputs['Color'], normal_map.inputs['Color'])
+    links.new(normal_convert.outputs[0], normal_map.inputs['Color'])
 
     links.new(normal_map.outputs['Normal'], principled.inputs['Normal'])
