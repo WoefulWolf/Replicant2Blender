@@ -1,3 +1,10 @@
+from bpy.types import NodeTree
+from bpy.types import NodeTree
+
+
+from bpy.types import NodeTree
+
+
 import bpy
 
 # Renamed in 5.0
@@ -6,10 +13,10 @@ sepRGB_input = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
 comRGB_name = "ShaderNodeCombineRGB" if bpy.app.version < (5, 0, 0) else "ShaderNodeCombineColor"
 comRGB_output = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
 
-def grid_location(x, y):
+def grid_location(x: int, y: int):
     return (x * 300, y * -80)
 
-def if_nz(type="Float"):
+def if_nz(type: str="Float") -> NodeTree:
     types = ["Float", "Vector", "Color"]
 
     if type not in types:
@@ -73,7 +80,7 @@ def if_nz(type="Float"):
 
     return node_group
 
-def dx_to_gl_normal():
+def dx_to_gl_normal() -> NodeTree:
     name = 'DirectX to OpenGL Normal'
     if name in bpy.data.node_groups:
         return bpy.data.node_groups[name]
@@ -136,7 +143,7 @@ def dx_to_gl_normal():
 
     return node_group
 
-def invert_channel(channel="Green"):
+def invert_channel(channel: str="Green") -> NodeTree:
     channels = ["Red", "Green", "Blue"]
     if channel not in channels:
         return None

@@ -1,10 +1,11 @@
 import bpy
 
+from ...classes.asset_package import Asset
+
 from ...util import search_texture, log
-from ...classes.tpGxAssetHeader import UnknownAsset
 from .nodes import dx_to_gl_normal, grid_location
 
-def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
+def master_rs_layer4(textures_dir: str, material: bpy.types.Material, asset: Asset):
     # Renamed in 5.0
     sepRGB_name = "ShaderNodeSeparateRGB" if bpy.app.version < (5, 0, 0) else "ShaderNodeSeparateColor"
     sepRGB_input = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
@@ -18,9 +19,9 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     links = material.node_tree.links
     material.blend_method = 'CLIP'
 
-    converted_textures = []
+    converted_textures: list[str] = []
     for texture in asset.textures:
-        texture_filename_base = texture.filename.replace(".rtex", "")
+        texture_filename_base = texture.texture_name.replace(".rtex", "")
         texture_filename = texture_filename_base + ".png"
         converted_textures.append(texture_filename)
 
@@ -39,7 +40,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     mask_uv.location = grid_location(-3, -10)
     mask_uv.hide = True
 
-    mask_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texLayerMask"), None)
+    mask_texture_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == "texLayerMask"), None)
     if mask_texture_index is None:
         log.w(f"Failed to find texLayerMask in material: {material.name}")
         return
@@ -49,6 +50,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     mask_image.image.colorspace_settings.name = 'Non-Color'
     mask_image.location = grid_location(-2, -10)
     mask_image.hide = True
+    mask_image.label = "texLayerMask"
 
     links.new(mask_uv.outputs['UV'], mask_image.inputs['Vector'])
 
@@ -58,7 +60,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     links.new(mask_image.outputs['Color'], mask_sep.inputs[sepRGB_input])
 
     # Color 0
-    color_0_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texBaseColor0"), None)
+    color_0_texture_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == "texBaseColor0"), None)
     if color_0_texture_index is None:
         log.w(f"Failed to find texBaseColor0 in material: {material.name}")
         return
@@ -66,9 +68,10 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     color_0_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[color_0_texture_index]))
     color_0_image.location = grid_location(-2, -8)
     color_0_image.hide = True
+    color_0_image.label = "texBaseColor0"
 
     # Color 1
-    color_1_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texBaseColor1"), None)
+    color_1_texture_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == "texBaseColor1"), None)
     if color_1_texture_index is None:
         log.w(f"Failed to find texBaseColor1 in material: {material.name}")
         return
@@ -76,9 +79,10 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     color_1_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[color_1_texture_index]))
     color_1_image.location = grid_location(-2, -6)
     color_1_image.hide = True
+    color_1_image.label = "texBaseColor1"
 
     # Color 2
-    color_2_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texBaseColor2"), None)
+    color_2_texture_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == "texBaseColor2"), None)
     if color_2_texture_index is None:
         log.w(f"Failed to find texBaseColor2 in material: {material.name}")
         return
@@ -86,9 +90,10 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     color_2_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[color_2_texture_index]))
     color_2_image.location = grid_location(-2, -4)
     color_2_image.hide = True
+    color_2_image.label = "texBaseColor2"
 
     # Color 3
-    color_3_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texBaseColor3"), None)
+    color_3_texture_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == "texBaseColor3"), None)
     if color_3_texture_index is None:
         log.w(f"Failed to find texBaseColor3 in material: {material.name}")
         return
@@ -96,6 +101,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     color_3_image.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[color_3_texture_index]))
     color_3_image.location = grid_location(-2, -2)
     color_3_image.hide = True
+    color_3_image.label = "texBaseColor3"
 
     # Mix Color 0-1
     mix_col_01 = nodes.new(type='ShaderNodeMixRGB')
@@ -124,7 +130,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     links.new(mix_col_0123.outputs['Color'], principled.inputs['Base Color'])
 
     # ORM 0
-    orm_0_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texORM0"), None)
+    orm_0_texture_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == "texORM0"), None)
     if orm_0_texture_index is None:
         log.w(f"Failed to find texORM0 in material: {material.name}")
         return
@@ -133,6 +139,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     orm_0_image.image.colorspace_settings.name = 'Non-Color'
     orm_0_image.location = grid_location(-2, 0)
     orm_0_image.hide = True
+    orm_0_image.label = "texORM0"
 
     orm_0_sep = nodes.new(type=sepRGB_name)
     orm_0_sep.location = grid_location(-1, 0)
@@ -140,7 +147,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     links.new(orm_0_image.outputs['Color'], orm_0_sep.inputs[sepRGB_input])
 
     # ORM 1
-    orm_1_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texORM1"), None)
+    orm_1_texture_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == "texORM1"), None)
     if orm_1_texture_index is None:
         log.w(f"Failed to find texORM1 in material: {material.name}")
         return
@@ -149,6 +156,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     orm_1_image.image.colorspace_settings.name = 'Non-Color'
     orm_1_image.location = grid_location(-2, 2)
     orm_1_image.hide = True
+    orm_1_image.label = "texORM1"
 
     orm_1_sep = nodes.new(type=sepRGB_name)
     orm_1_sep.location = grid_location(-1, 2)
@@ -156,7 +164,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     links.new(orm_1_image.outputs['Color'], orm_1_sep.inputs[sepRGB_input])
 
     # ORM 2
-    orm_2_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texORM2"), None)
+    orm_2_texture_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == "texORM2"), None)
     if orm_2_texture_index is None:
         log.w(f"Failed to find texORM2 in material: {material.name}")
         return
@@ -165,6 +173,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     orm_2_image.image.colorspace_settings.name = 'Non-Color'
     orm_2_image.location = grid_location(-2, 4)
     orm_2_image.hide = True
+    orm_2_image.label = "texORM2"
 
     orm_2_sep = nodes.new(type=sepRGB_name)
     orm_2_sep.location = grid_location(-1, 4)
@@ -172,7 +181,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     links.new(orm_2_image.outputs['Color'], orm_2_sep.inputs[sepRGB_input])
 
     # ORM 3
-    orm_3_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texORM3"), None)
+    orm_3_texture_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == "texORM3"), None)
     if orm_3_texture_index is None:
         log.w(f"Failed to find texORM3 in material: {material.name}")
         return
@@ -181,6 +190,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     orm_3_image.image.colorspace_settings.name = 'Non-Color'
     orm_3_image.location = grid_location(-2, 6)
     orm_3_image.hide = True
+    orm_3_image.label = "texORM3"
 
     orm_3_sep = nodes.new(type=sepRGB_name)
     orm_3_sep.location = grid_location(-1, 6)
@@ -277,7 +287,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     links.new(mix_m_0123.outputs[0], principled.inputs['Metallic'])
 
     # Normal 0
-    normal_0_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texNormal0"), None)
+    normal_0_texture_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == "texNormal0"), None)
     if normal_0_texture_index is None:
         log.w(f"Failed to find texNormal0 in material: {material.name}")
         return
@@ -286,9 +296,10 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     normal_0_image.image.colorspace_settings.name = 'Non-Color'
     normal_0_image.location = grid_location(-2, 9)
     normal_0_image.hide = True
+    normal_0_image.label = "texNormal0"
 
     # Normal 1
-    normal_1_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texNormal1"), None)
+    normal_1_texture_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == "texNormal1"), None)
     if normal_1_texture_index is None:
         log.w(f"Failed to find texNormal1 in material: {material.name}")
         return
@@ -297,9 +308,10 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     normal_1_image.image.colorspace_settings.name = 'Non-Color'
     normal_1_image.location = grid_location(-2, 11)
     normal_1_image.hide = True
+    normal_1_image.label = "texNormal1"
 
     # Normal 2
-    normal_2_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texNormal2"), None)
+    normal_2_texture_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == "texNormal2"), None)
     if normal_2_texture_index is None:
         log.w(f"Failed to find texNormal2 in material: {material.name}")
         return
@@ -308,9 +320,10 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     normal_2_image.image.colorspace_settings.name = 'Non-Color'
     normal_2_image.location = grid_location(-2, 13)
     normal_2_image.hide = True
+    normal_2_image.label = "texNormal2"
 
     # Normal 3
-    normal_3_texture_index = next((i for i, x in enumerate(asset.textures) if x.mapType == "texNormal3"), None)
+    normal_3_texture_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == "texNormal3"), None)
     if normal_3_texture_index is None:
         log.w(f"Failed to find texNormal3 in material: {material.name}")
         return
@@ -319,6 +332,7 @@ def master_rs_layer4(textures_dir, material, asset: UnknownAsset):
     normal_3_image.image.colorspace_settings.name = 'Non-Color'
     normal_3_image.location = grid_location(-2, 14)
     normal_3_image.hide = True
+    normal_3_image.label = "texNormal3"
 
     # Mix Normal 0-1
     mix_normal_01 = nodes.new(type='ShaderNodeMixRGB')

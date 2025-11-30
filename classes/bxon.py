@@ -1,33 +1,62 @@
-from .levelData import LevelData
-from ..util import *
-from .tpGxAssetHeader import tpGxAssetHeader
-from .tpGxMeshHead import tpGxMeshHead
-from .tpGxTexHead import tpGxTexHead
+import struct
+from dataclasses import dataclass
+from typing import Optional, Union, BinaryIO
+from io import BytesIO
 
+from .common import read_string
+
+
+@dataclass
 class BXON:
-    def __init__(self, packFile):
-        self.id = packFile.read(4)
-        self.version = to_int(packFile.read(4))
-        self.projectID = to_int(packFile.read(4))
+    magic: bytes
+    version: int
+    project_id: int
+    asset_type: str
+    asset_data: object | None
 
-        self.offsetToFileTypeName = to_int(packFile.read(4))
-        offsetFileTypeName = packFile.tell() + self.offsetToFileTypeName - 4
+    @classmethod
+    def from_stream(cls, stream: BinaryIO) -> 'BXON | None':
+        # Read header
+        magic, version, project_id = struct.unpack('<4sII', stream.read(12))
 
-        self.offsetToAssetData = to_int(packFile.read(4))
-        offsetAssetData = packFile.tell() + self.offsetToAssetData - 4
+        # Validate magic
+        if magic != b'BXON':
+            return None
 
-        returnPos = packFile.tell()
-        packFile.seek(offsetFileTypeName)
-        self.fileTypeName = to_string(packFile.read(1024))
+        asset_type_start_offset = stream.tell()
+        offset_to_type = struct.unpack('<I', stream.read(4))[0]
 
-        packFile.seek(offsetAssetData)
-        if (self.fileTypeName == "tpXonAssetHeader"):
-            self.assetHeader = tpGxAssetHeader(packFile)
-        elif (self.fileTypeName == "tpGxMeshHead"):
-            self.meshHead = tpGxMeshHead(packFile)
-        elif (self.fileTypeName == "tpGxTexHead"):
-            self.texHead = tpGxTexHead(packFile)
-        elif (self.fileTypeName == "LevelData"):
-            self.levelData = LevelData(packFile)
+        asset_data_start_offset = stream.tell()
+        offset_to_data = struct.unpack('<I', stream.read(4))[0]
 
-        packFile.seek(returnPos)
+        # Read asset type string
+        stream.seek(asset_type_start_offset + offset_to_type)
+        asset_type = read_string(stream)
+
+        # Read asset data based on type
+        stream.seek(asset_data_start_offset + offset_to_data)
+        asset_data = None
+
+        # Import here to avoid circular imports
+        if asset_type == "tpXonAssetHeader":
+            from .asset_package import tpXonAssetHeader
+            asset_data = tpXonAssetHeader.from_stream(stream)
+        elif asset_type == "tpGxMeshHead":
+            from .mesh_head import tpGxMeshHead
+            asset_data = tpGxMeshHead.from_stream(stream)
+        elif asset_type == "tpGxTexHead":
+            from .tex_head import tpGxTexHead
+            asset_data = tpGxTexHead.from_stream(stream)
+        # Other asset types can be added here (tpTandaFontSdfParam, etc.)
+
+        return cls(
+            magic=magic,
+            version=version,
+            project_id=project_id,
+            asset_type=asset_type,
+            asset_data=asset_data
+        )
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> 'BXON | None':
+        return cls.from_stream(BytesIO(data))

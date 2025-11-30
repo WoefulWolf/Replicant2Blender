@@ -1,7 +1,9 @@
 from typing import BinaryIO, List, Optional
 import os
 
-from ..util import readFloatX4, readString, to_float, to_string, to_uint, readFloatX3
+from .common import read_string
+
+from ..util import readFloatX4, to_float, to_string, to_uint, readFloatX3
 
 def skip(file: BinaryIO, count: int):
     file.seek(count, os.SEEK_CUR)
@@ -15,11 +17,11 @@ def seekToRelOffset(file: BinaryIO, ownOffset: int = -4):
     offset = to_uint(file.read(4))
     file.seek(offset + ownOffset, 1)
 
-def readStringFromOffset(file: BinaryIO, ownOffset: int = -4):
+def read_stringFromOffset(file: BinaryIO, ownOffset: int = -4):
     offset = to_uint(file.read(4))
     returnPos = file.tell()
     file.seek(offset + ownOffset, 1)
-    string = readString(file)
+    string = read_string(file)
     file.seek(returnPos)
     return string
 
@@ -46,7 +48,7 @@ class LDMeshEntry:
         skipPadding(packFile, 4)
         skip(packFile, 8)
         skipPadding(packFile, 8)
-        self.meshPath = readString(packFile)
+        self.meshPath = read_string(packFile)
 
 class LDUnknEntry10:
     def __init__(self, packFile: BinaryIO):
@@ -61,7 +63,7 @@ class LDUnknEntry18:
         self.rot = readFloatX4(packFile)
         self.scale = to_float(packFile.read(4))
         self.unkn0 = to_uint(packFile.read(4))
-        self.unknPath = readStringFromOffset(packFile)
+        self.unknPath = read_stringFromOffset(packFile)
         ...
 
 class LDObject:
