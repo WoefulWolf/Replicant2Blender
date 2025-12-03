@@ -22,6 +22,8 @@ class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
     def execute(self, context):
         directory = self.directory
         show_blender_system_console()
+        bpy.context.scene.render.fps = 60
+        bpy.context.scene.frame_end = 600
         for file_elem in self.files:
             filepath = os.path.join(directory, file_elem.name)
             if os.path.isfile(filepath):

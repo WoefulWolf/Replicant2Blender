@@ -5,7 +5,14 @@ from ..classes.asset_package import tpXonAssetHeader
 from ..classes.tex_head import get_DXGI_format, get_alpha_mode, tpGxTexHead
 from ..classes.pack import Pack, PackFile
 
+from .materials.master_rs_standard import master_rs_standard
+from .materials.master_rs_layer2 import master_rs_layer2
+from .materials.master_rs_layer3 import master_rs_layer3
 from .materials.master_rs_layer4 import master_rs_layer4
+from .materials.master_rs_hair import master_rs_hair
+from .materials.master_rs_ao_sheet import master_rs_ao_sheet
+from .materials.master_rs_leaf import master_rs_leaf
+from .materials.master_rs_xlu_water import master_rs_xlu_water
 from .materials.nodes import dx_to_gl_normal, grid_location
 from ..util import *
 
@@ -35,12 +42,33 @@ def construct_materials(pack_dir: str, material_packs: list[Pack]):
 
         log.d(f"Generating material {b_mat_name}")
 
-        if "master_rs_layer4" in material_asset.parent_asset_path:
-            try:
+        try:
+            if "master_rs_standard" in material_asset.parent_asset_path:
+                master_rs_standard(textures_dir, material, material_asset)
+                continue
+            elif "master_rs_layer2" in material_asset.parent_asset_path:
+                master_rs_layer2(textures_dir, material, material_asset)
+                continue
+            elif "master_rs_layer3" in material_asset.parent_asset_path:
+                master_rs_layer3(textures_dir, material, material_asset)
+                continue
+            elif "master_rs_layer4" in material_asset.parent_asset_path:
                 master_rs_layer4(textures_dir, material, material_asset)
-            except Exception as e:
-                log.w(f"Failed to construct material: {material.name} ({e})")
-            continue
+                continue
+            elif "master_rs_hair" in material_asset.parent_asset_path:
+                master_rs_hair(textures_dir, material, material_asset)
+                continue
+            elif "master_rs_ao_sheet" in material_asset.parent_asset_path:
+                master_rs_ao_sheet(textures_dir, material, material_asset)
+                continue
+            elif "master_rs_leaf" in material_asset.parent_asset_path:
+                master_rs_leaf(textures_dir, material, material_asset)
+                continue
+            elif "master_rs_xlu_water" in material_asset.parent_asset_path:
+                master_rs_xlu_water(textures_dir, material, material_asset)
+                continue
+        except Exception as e:
+            log.w(f"Failed to construct shader for material: {material.name} ({e})")
 
         material.use_nodes = True
         material.node_tree.links.clear()

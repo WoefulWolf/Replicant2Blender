@@ -20,8 +20,9 @@ class Constant:
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'Constant':
+        const_name_hash = struct.unpack('<I', stream.read(4))[0]
         constant_name_start_offset = stream.tell()
-        const_name_hash, offset_to_name = struct.unpack('<II', stream.read(8))
+        offset_to_name = struct.unpack('<I', stream.read(4))[0]
 
         # Read values
         values = struct.unpack('<ffffffB', stream.read(25))
@@ -57,8 +58,9 @@ class ConstantBuffer:
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'ConstantBuffer':
+        cb_name_hash = struct.unpack('<I', stream.read(4))[0]
         cb_name_start_offset = stream.tell()
-        cb_name_hash, offset_to_name = struct.unpack('<II', stream.read(8))
+        offset_to_name = struct.unpack('<I', stream.read(4))[0]
 
         return_pos = stream.tell()
         stream.seek(cb_name_start_offset + offset_to_name)
