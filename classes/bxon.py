@@ -47,6 +47,8 @@ class BXON:
         elif asset_type == "tpGxTexHead":
             from .tex_head import tpGxTexHead
             asset_data = tpGxTexHead.from_stream(stream)
+        else:
+            return None
         # Other asset types can be added here (tpTandaFontSdfParam, etc.)
 
         return cls(
@@ -60,3 +62,35 @@ class BXON:
     @classmethod
     def from_bytes(cls, data: bytes) -> 'BXON | None':
         return cls.from_stream(BytesIO(data))
+
+    def write_to(self, writer) -> None:
+        from .binary_writer import BinaryWriter
+
+        # Write header
+        writer.write_struct('<4s', self.magic)
+        writer.write_struct('<I', self.version)
+        writer.write_struct('<I', self.project_id)
+
+        # Placeholder for offset to asset type
+        asset_type_start_offset = writer.tell()
+        asset_type_placeholder = writer.write_placeholder('<I', asset_type_start_offset)
+
+        # Placeholder for offset to asset data
+        asset_data_start_offset = writer.tell()
+        asset_data_placeholder = writer.write_placeholder('<I', asset_data_start_offset)
+
+        # Align and write asset type string
+        writer.align_min_padding(8, 8)
+        asset_type_pos = writer.tell()
+        writer.patch_placeholder(asset_type_placeholder, asset_type_pos)
+        writer.write_string(self.asset_type)
+
+        # Align and write asset data
+        writer.align_min_padding(8, 8)
+        asset_data_pos = writer.tell()
+        writer.patch_placeholder(asset_data_placeholder, asset_data_pos)
+
+        if self.asset_data is not None:
+            # Call the appropriate write_to method based on asset type
+            if hasattr(self.asset_data, 'write_to'):
+                self.asset_data.write_to(writer)

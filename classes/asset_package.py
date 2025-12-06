@@ -27,7 +27,6 @@ class Constant:
         # Read values
         values = struct.unpack('<ffffffB', stream.read(25))
 
-        # Align to 4 bytes
         align_relative(stream, 0, 4)
 
         # Read name

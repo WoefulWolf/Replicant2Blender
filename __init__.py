@@ -1,9 +1,10 @@
 import bpy
 import os
 from bpy_extras.io_utils import ExportHelper,ImportHelper
-from bpy.props import StringProperty, BoolProperty, EnumProperty, CollectionProperty
 from bpy.types import Operator, OperatorFileListElement
 from .importers import pack_import
+from .exporters import pack_export
+from .ui import output
 from .util import log, show_blender_system_console
 
 class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
@@ -11,10 +12,8 @@ class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
     bl_idname = "import_scene.replicant_mesh_pack"
     bl_label = "Import File(s)"
     bl_options = {'PRESET', "REGISTER", "UNDO"}
-    files : CollectionProperty(
-            name="File Path",
-            type=OperatorFileListElement)
-    directory: StringProperty(subtype='DIR_PATH')
+    files : bpy.props.CollectionProperty(name="File Path", type=OperatorFileListElement)
+    directory: bpy.props.StringProperty(subtype='DIR_PATH')
     extract_textures: bpy.props.BoolProperty(name="Extract Textures", description="This automatically extracts and tries to convert textures to PNG", default=True)
     construct_materials: bpy.props.BoolProperty(name="Construct Materials", description="This automatically sets up materials with the appropriate textures (Requires the user to have extracted the textures at least once before)", default=True)
     only_extract_textures: bpy.props.BoolProperty(name="Only Extract Textures", description="This can be used to simply extract the textures from a PACK containing some, nothing else will be done", default=False)
@@ -36,7 +35,7 @@ class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
 
 class Replicant2BlenderPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
-    assets_path : StringProperty(options={'HIDDEN'})
+    assets_path : bpy.props.StringProperty(options={'HIDDEN'})
 
     def draw(self, context):
         layout = self.layout
@@ -54,6 +53,8 @@ def register():
     bpy.utils.register_class(ImportReplicantMeshPack)
     bpy.types.TOPBAR_MT_file_import.append(replicant_import_mesh_pack)
     bpy.utils.register_class(Replicant2BlenderPreferences)
+    pack_export.register()
+    output.register()
     log.d("Registered")
 
 def unregister():
@@ -61,6 +62,8 @@ def unregister():
     bpy.utils.unregister_class(ImportReplicantMeshPack)
     bpy.types.TOPBAR_MT_file_import.remove(replicant_import_mesh_pack)
     bpy.utils.unregister_class(Replicant2BlenderPreferences)
+    output.unregister()
+    pack_export.unregister()
     log.d("Unregistered")
 
 if __name__ == '__main__':

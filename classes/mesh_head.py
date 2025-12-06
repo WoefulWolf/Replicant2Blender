@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import BinaryIO
 from io import BytesIO
 
-from .common import VertexBufferType, read_string, align_relative, DataOffset
+from .common import VertexBufferType, read_string, DataOffset, align_relative
 
 
 @dataclass
@@ -42,6 +42,34 @@ class Bone:
             position=position
         )
 
+    @staticmethod
+    def write_list(writer, bones: list['Bone']) -> None:
+        from .binary_writer import BinaryWriter
+
+        placeholders = []
+
+        for bone in bones:
+            name_start_offset = writer.tell()
+            name_placeholder = writer.write_placeholder('<I', name_start_offset)
+            writer.write_struct('<i', bone.parent_bone_index)
+
+            # Write rotation quaternion
+            writer.write_struct('<ffff', *bone.rotation)
+
+            # Write scale
+            writer.write_struct('<fff', *bone.scale)
+
+            # Write position
+            writer.write_struct('<fff', *bone.position)
+
+            placeholders.append((name_placeholder, bone.name))
+
+        for name_placeholder, name in placeholders:
+            writer.align_min_padding(8, 8)
+            name_pos = writer.tell()
+            writer.patch_placeholder(name_placeholder, name_pos)
+            writer.write_string(name)
+
 
 @dataclass
 class BonePose:
@@ -76,6 +104,32 @@ class BonePose:
             unknown_matrix_1=unknown_matrix_1
         )
 
+    @staticmethod
+    def write_list(writer, bone_poses: list['BonePose']) -> None:
+        from .binary_writer import BinaryWriter
+
+        placeholders = []
+
+        for bone_pose in bone_poses:
+            name_start_offset = writer.tell()
+            name_placeholder = writer.write_placeholder('<I', name_start_offset)
+            writer.write_struct('<if', bone_pose.unknown_index, bone_pose.length)
+
+            # Write matrices (flatten 4x4 matrices)
+            matrix_0_flat = [val for row in bone_pose.unknown_matrix_0 for val in row]
+            writer.write_struct('<16f', *matrix_0_flat)
+
+            matrix_1_flat = [val for row in bone_pose.unknown_matrix_1 for val in row]
+            writer.write_struct('<16f', *matrix_1_flat)
+
+            placeholders.append((name_placeholder, bone_pose.name))
+
+        for name_placeholder, name in placeholders:
+            writer.align_min_padding(8, 8)
+            name_pos = writer.tell()
+            writer.patch_placeholder(name_placeholder, name_pos)
+            writer.write_string(name)
+
 
 @dataclass
 class VertexBuffer:
@@ -96,6 +150,17 @@ class VertexBuffer:
             vertex_buffer_flag=values[2],
             vertex_buffer_size=values[3],
             vertex_buffer_type=values[4]
+        )
+
+    def write_to(self, writer) -> None:
+        from .binary_writer import BinaryWriter
+
+        writer.write_struct('<IIIIB',
+            self.vertex_buffer_offset,
+            self.unknown_uint32_1,
+            self.vertex_buffer_flag,
+            self.vertex_buffer_size,
+            self.vertex_buffer_type
         )
 
 
@@ -140,6 +205,39 @@ class Object:
             vertex_buffers=vertexBuffers
         )
 
+    @staticmethod
+    def write_list(writer, objects: list['Object']) -> None:
+        from .binary_writer import BinaryWriter
+
+        vb_placeholders = []
+
+        for obj in objects:
+            writer.write_struct('<IIIIIII',
+                obj.indices_start_offset,
+                obj.unknown_uint32_1,
+                obj.unknown_uint32_2,
+                obj.vertex_count,
+                obj.index_count,
+                obj.index_buffer_size,
+                obj.unknown_uint32_6
+            )
+
+            writer.write_struct('<I', len(obj.vertex_buffers))
+            vb_start_offset = writer.tell()
+            vb_placeholder = writer.write_placeholder('<I', vb_start_offset)
+
+            vb_placeholders.append((vb_placeholder, obj.vertex_buffers))
+            writer.align_min_padding(8, 0)
+
+        writer.align_min_padding(8, 8)
+        for vb_placeholder, vertex_buffers in vb_placeholders:
+            vb_pos = writer.tell()
+            writer.patch_placeholder(vb_placeholder, vb_pos)
+
+            for vb in vertex_buffers:
+                vb.write_to(writer)
+                writer.align_min_padding(8, 0)
+
 
 @dataclass
 class Material:
@@ -172,6 +270,35 @@ class Material:
             unknown_byte=unknown_byte
         )
 
+    @staticmethod
+    def write_list(writer, materials: list['Material']) -> None:
+        from .binary_writer import BinaryWriter
+
+        placeholders = []
+
+        for material in materials:
+            name_start_offset = writer.tell()
+            name_placeholder = writer.write_placeholder('<I', name_start_offset)
+
+            byte_start_offset = writer.tell()
+            byte_placeholder = writer.write_placeholder('<I', byte_start_offset)
+            writer.write_struct('<I', material.unknown_uint32)
+
+            placeholders.append((name_placeholder, byte_placeholder, material.name, material.unknown_byte))
+
+        for name_placeholder, byte_placeholder, name, byte_val in placeholders:
+            # Write name (aligned)
+            writer.align_min_padding(8, 8)
+            name_pos = writer.tell()
+            writer.patch_placeholder(name_placeholder, name_pos)
+            writer.write_string(name)
+
+            # Write byte (aligned)
+            writer.align_min_padding(8, 8)
+            byte_pos = writer.tell()
+            writer.patch_placeholder(byte_placeholder, byte_pos)
+            writer.write_struct('<B', byte_val)
+
 
 @dataclass
 class MaterialGroup:
@@ -196,6 +323,20 @@ class MaterialGroup:
             bounding_box_coord1=bbox1,
             bounding_box_coord2=bbox2
         )
+
+    @staticmethod
+    def write_list(writer, material_groups: list['MaterialGroup']) -> None:
+        from .binary_writer import BinaryWriter
+
+        for mg in material_groups:
+            writer.write_struct('<IIII',
+                mg.object_index,
+                mg.material_index,
+                mg.index_start,
+                mg.index_count
+            )
+            writer.write_struct('<fff', *mg.bounding_box_coord1)
+            writer.write_struct('<fff', *mg.bounding_box_coord2)
 
 
 @dataclass
@@ -297,3 +438,70 @@ class tpGxMeshHead:
     @classmethod
     def from_bytes(cls, data: bytes) -> 'tpGxMeshHead':
         return cls.from_stream(BytesIO(data))
+
+    def write_to(self, writer) -> None:
+        from .binary_writer import BinaryWriter
+
+        start_offset = writer.tell()
+
+        # Write bounding boxes
+        writer.write_struct('<fff', *self.bounding_box_coord1)
+        writer.write_struct('<fff', *self.bounding_box_coord2)
+
+        # Write header (all values should be pre-calculated)
+        writer.write_struct('<I', self.total_vertex_buffers_size)
+        self.vertex_buffers_offset.write_to(writer)
+        writer.write_struct('<I', self.total_index_buffers_size)
+        self.index_buffers_offset.write_to(writer)
+        writer.write_struct('<f', self.unknown_float)
+
+        # Write counts and offset placeholders
+        writer.write_struct('<I', len(self.bones))
+        bones_start_offset = writer.tell()
+        bones_placeholder = writer.write_placeholder('<I', bones_start_offset)
+
+        writer.write_struct('<I', len(self.bone_poses))
+        bone_poses_start_offset = writer.tell()
+        bone_poses_placeholder = writer.write_placeholder('<I', bone_poses_start_offset)
+
+        writer.write_struct('<I', len(self.objects))
+        objects_start_offset = writer.tell()
+        objects_placeholder = writer.write_placeholder('<I', objects_start_offset)
+
+        writer.write_struct('<I', len(self.materials))
+        materials_start_offset = writer.tell()
+        materials_placeholder = writer.write_placeholder('<I', materials_start_offset)
+
+        writer.write_struct('<I', len(self.material_groups))
+        material_groups_start_offset = writer.tell()
+        material_groups_placeholder = writer.write_placeholder('<I', material_groups_start_offset)
+
+        # Write bones
+        writer.align_min_padding(8, 8)
+        bones_pos = writer.tell()
+        writer.patch_placeholder(bones_placeholder, bones_pos)
+        Bone.write_list(writer, self.bones)
+
+        # Write bone poses
+        writer.align_min_padding(8, 8)
+        bone_poses_pos = writer.tell()
+        writer.patch_placeholder(bone_poses_placeholder, bone_poses_pos)
+        BonePose.write_list(writer, self.bone_poses)
+
+        # Write objects
+        writer.align_min_padding(8, 8)
+        objects_pos = writer.tell()
+        writer.patch_placeholder(objects_placeholder, objects_pos)
+        Object.write_list(writer, self.objects)
+
+        # Write materials
+        writer.align_min_padding(8, 8)
+        materials_pos = writer.tell()
+        writer.patch_placeholder(materials_placeholder, materials_pos)
+        Material.write_list(writer, self.materials)
+
+        # Write material groups
+        writer.align_min_padding(8, 8)
+        material_groups_pos = writer.tell()
+        writer.patch_placeholder(material_groups_placeholder, material_groups_pos)
+        MaterialGroup.write_list(writer, self.material_groups)

@@ -24,7 +24,6 @@ class Import:
         path_start_offset = stream.tell()
         offset_to_path, unknown0 = struct.unpack('<II', stream.read(8))
 
-        # Read the path string
         return_pos = stream.tell()
         stream.seek(path_start_offset + offset_to_path)
         path = read_string(stream)
@@ -35,6 +34,23 @@ class Import:
             path=path,
             unknown0=unknown0
         )
+
+    @staticmethod
+    def write_list(writer, imports: list['Import']) -> None:
+        placeholders = []
+
+        for import_item in imports:
+            writer.write_struct('<I', import_item.path_hash)
+            path_start_offset = writer.tell()
+            path_placeholder = writer.write_placeholder('<I', path_start_offset)
+            writer.write_struct('<I', import_item.unknown0)
+            placeholders.append((path_placeholder, path_start_offset, import_item.path))
+
+        for path_placeholder, path_start_offset, path in placeholders:
+            writer.align_min_padding(8, 8)
+            path_pos = writer.tell()
+            writer.patch_placeholder(path_placeholder, path_pos)
+            writer.write_string(path)
 
 
 def align_relative(stream: BinaryIO, relative_start: int, alignment: int):
@@ -65,3 +81,9 @@ class DataOffset:
             offset=value & 0x7FFFFFFF,  # Lower 31 bits
             has_data=bool(value >> 31)  # Upper 1 bit
         )
+
+    def write_to(self, writer) -> None:
+        value = self.offset & 0x7FFFFFFF
+        if self.has_data:
+            value |= 0x80000000
+        writer.write_struct('<I', value)

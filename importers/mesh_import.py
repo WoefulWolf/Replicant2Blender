@@ -8,25 +8,21 @@ from ..classes.mesh_head import tpGxMeshHead
 from ..classes.pack import Pack, PackFile
 from ..util import log
 
-from mathutils import Vector, Matrix, Quaternion
-import bpy, bmesh, numpy, math
-from operator import add
-
-def get_mesh_files(pack: Pack) -> list[PackFile]:
-    mesh_files: list[PackFile] = []
-    for file in pack.files:
-        if (file.content and file.content.asset_type == "tpGxMeshHead"):
-            mesh_files.append(file)
-    return mesh_files
+from mathutils import Vector, Matrix
+import bpy, bmesh, math
 
 def construct_meshes(pack: Pack):
     log.i("Generating Blender Objects...")
-    mesh_files = get_mesh_files(pack)
 
-    for i, mesh_file in enumerate(mesh_files):
+    for i, file in enumerate(pack.files):
+        if file.content is None or file.content.asset_type != "tpGxMeshHead":
+            continue
+        mesh_file = file
+
         log.i(f"Generating object {mesh_file.name}")
         mesh_collection = bpy.data.collections.new(mesh_file.name)
         bpy.context.scene.collection.children.link(mesh_collection)
+        mesh_collection.replicant_export = True
 
         mesh_bxon = mesh_file.content
         mesh_head: tpGxMeshHead = mesh_bxon.asset_data
@@ -102,6 +98,7 @@ def construct_meshes(pack: Pack):
 
             vertex_buffers = mesh_data.object_vertex_buffers[k]
             index_buffer = mesh_data.object_indices[k]
+
             positions_buffer: PositionsBuffer = vertex_buffers.get_buffers_of_type(VertexBufferType.POSITION)[0]
             normals_buffer: NormalsBuffer = vertex_buffers.get_buffers_of_type(VertexBufferType.NORMAL)[0]
 
@@ -181,8 +178,10 @@ def construct_meshes(pack: Pack):
                                 luv.uv = Vector(uv_buffers[m].uvs[idx])
 
             # Create and assign materials
-            b_mesh.verts.ensure_lookup_table()
-            for material_group in mesh_head.material_groups:
+            # Use ensure_lookup_table to allow direct indexing of faces
+            b_mesh.faces.ensure_lookup_table()
+
+            for material_group_index, material_group in enumerate(mesh_head.material_groups):
                 if material_group.object_index != k:
                     continue
                 material = mesh_head.materials[material_group.material_index]
@@ -198,10 +197,11 @@ def construct_meshes(pack: Pack):
                     log.e(f"Could not find material {b_material.name} in {b_obj.name}!")
                     continue
 
-                mat_faces = index_buffer.indices[material_group.index_start//3:material_group.index_start//3 + material_group.index_count//3]
-                for face in mat_faces:
-                    if (b_mesh.verts[face[0]] != b_mesh.verts[face[1]] and b_mesh.verts[face[0]] != b_mesh.verts[face[2]] and b_mesh.verts[face[1]] != b_mesh.verts[face[2]]):
-                        b_mesh.faces.get([b_mesh.verts[face[0]], b_mesh.verts[face[1]], b_mesh.verts[face[2]]]).material_index = material_index
+                # Directly index faces by their position in the bmesh
+                face_start = material_group.index_start // 3
+                face_end = (material_group.index_start + material_group.index_count) // 3
+                for face_idx in range(face_start, face_end):
+                    b_mesh.faces[face_idx].material_index = material_index
 
             b_mesh.to_mesh(b_obj.data)
             b_mesh.free()
