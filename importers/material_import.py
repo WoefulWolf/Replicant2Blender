@@ -2,6 +2,7 @@ import os
 import bpy
 from bpy.types import Material
 
+
 from ..classes.material_instance import tpGxMaterialInstanceV2
 from ..classes.asset_package import tpXonAssetHeader
 from ..classes.tex_head import get_DXGI_format, get_alpha_mode, tpGxTexHead
@@ -15,7 +16,8 @@ from .materials.master_rs_hair import master_rs_hair
 from .materials.master_rs_ao_sheet import master_rs_ao_sheet
 from .materials.master_rs_leaf import master_rs_leaf
 from .materials.master_rs_xlu_water import master_rs_xlu_water
-from .materials.nodes import dx_to_gl_normal, grid_location
+from .materials.default import default_material
+from .materials.nodes import dx_to_gl_normal, grid_location, texture_sampler
 from ..util import *
 
 # Map material type names to their handler functions
@@ -30,8 +32,53 @@ MATERIAL_HANDLERS = {
     "master_rs_xlu_water": master_rs_xlu_water,
 }
 
-def setup_custom_ui_values(material: Material, material_instance: tpGxMaterialInstanceV2, textures_dir: str):
+def _find_pack_path(tex_name: str, textures_dir: str, imports: list[str]) -> str | None:
+    for root, dirs, files in os.walk(textures_dir):
+        if any(tex_name in file for file in files):
+            rel_path = os.path.relpath(root, textures_dir)
+            if rel_path == '.':
+                continue
+
+            path_parts = rel_path.split(os.sep)
+            for part in path_parts:
+                for import_str in imports:
+                    if import_str.endswith(part):
+                        return import_str
+    return None
+
+def _find_texture_path(tex_name: str, textures_dir: str) -> str | None:
+    matches = []
+    for root, dirs, files in os.walk(textures_dir):
+        for file in files:
+            if tex_name in file:
+                matches.append(os.path.join(root, file))
+
+    # Prioritize PNG files
+    png_matches = [m for m in matches if m.lower().endswith('.png')]
+    if png_matches:
+        return png_matches[0]
+    elif matches:
+        return matches[0]
+    return None
+
+def setup_material_texture_samplers(material: Material, material_asset: tpXonAssetHeader, textures_dir: str):
+    material_instance: tpGxMaterialInstanceV2 = material_asset.assets[0].asset_content
+    imports = [i.path for i in material_asset.imports]
     material.replicant_master_material = material_instance.parent_asset_path
+
+    for texture in material_instance.textures:
+        sampler = material.replicant_texture_samplers.add()
+        sampler.name = texture.sampler_name
+        sampler.previous_name = sampler.name
+        tex_name = texture.texture_name.rpartition('.')[0]
+        texture_path = _find_texture_path(tex_name, textures_dir)
+        if texture_path:
+            sampler.texture_path = texture_path
+        pack_path = _find_pack_path(tex_name, textures_dir, imports)
+        if pack_path:
+            sampler.pack_path = pack_path
+
+def setup_custom_ui_values(material: Material, material_instance: tpGxMaterialInstanceV2):
     for constant_buffer in material_instance.constant_buffers:
         cb = material.replicant_constant_buffers.add()
         cb.name = constant_buffer.constant_buffer_name
@@ -45,19 +92,6 @@ def setup_custom_ui_values(material: Material, material_instance: tpGxMaterialIn
         tp = material.replicant_texture_parameters.add()
         tp.name = texture_parameter.parameter_name
         tp.values = (texture_parameter.value0, texture_parameter.value1, texture_parameter.value2)
-    texture_node_labels = [node.label for node in material.node_tree.nodes if node.type == 'TEX_IMAGE']
-    for texture in material_instance.textures:
-        if texture.sampler_name in texture_node_labels:
-            continue
-        image_node = material.node_tree.nodes.new(type='ShaderNodeTexImage')
-        image_node.location = grid_location(-5, -5)
-        image_node.hide = True
-        image_node.label = texture.sampler_name
-        texture_filename_base = texture.texture_name.replace(".rtex", "")
-        texture_filename = texture_filename_base + ".png"
-        texture_file = search_texture(textures_dir, texture_filename)
-        if texture_file is not None:
-            image_node.image = bpy.data.images.load(texture_file)
 
 def construct_materials(pack_dir: str, material_packs: list[Pack]):
     log.i("Generating Blender materials...")
@@ -78,6 +112,7 @@ def construct_materials(pack_dir: str, material_packs: list[Pack]):
 
         if b_mat_name in bpy.data.materials:
             material = bpy.data.materials[b_mat_name]
+            material.replicant_texture_samplers.clear()
             material.replicant_constant_buffers.clear()
             material.replicant_texture_parameters.clear()
         else:
@@ -85,12 +120,14 @@ def construct_materials(pack_dir: str, material_packs: list[Pack]):
 
         log.d(f"Generating material {b_mat_name}")
 
+        setup_material_texture_samplers(material, material_asset_header, textures_dir)
+
         try:
             handled = False
             for material_type, handler in MATERIAL_HANDLERS.items():
                 if material_type in material_instance.parent_asset_path:
                     handler(textures_dir, material, material_instance)
-                    setup_custom_ui_values(material, material_instance, textures_dir)
+                    setup_custom_ui_values(material, material_instance)
                     handled = True
                     break
             if handled:
@@ -98,89 +135,9 @@ def construct_materials(pack_dir: str, material_packs: list[Pack]):
         except Exception as e:
             log.w(f"Failed to construct shader for material: {material.name} ({e})")
 
-        material.use_nodes = True
-        material.node_tree.links.clear()
-        material.node_tree.nodes.clear()
-        nodes = material.node_tree.nodes
-        links = material.node_tree.links
-        material.blend_method = 'CLIP'
-
-        output = nodes.new(type='ShaderNodeOutputMaterial')
-        output.location = grid_location(4, 0)
-        principled = nodes.new(type='ShaderNodeBsdfPrincipled')
-        principled.location = grid_location(3, 0)
-        output_link = links.new( principled.outputs['BSDF'], output.inputs['Surface'])
-
-        for texture in material_instance.textures:
-            texture_filename_base = texture.texture_name.replace(".rtex", "")
-            texture_filename = texture_filename_base + ".png"
-            texture_file = search_texture(textures_dir, texture_filename)
-            if texture_file is None:
-                log.w(f"Failed to find texture: {texture_filename}")
-                continue
-
-            if texture.sampler_name in ["texBaseColor", "texBaseColor0"]:
-                color_image = nodes.new(type='ShaderNodeTexImage')
-                color_image.location = grid_location(0, 0)
-                color_image.image = bpy.data.images.load(texture_file)
-                color_image.hide = True
-                color_image.label = texture.sampler_name
-
-                albedo_principled = links.new(color_image.outputs['Color'], principled.inputs['Base Color'])
-                alpha_link = links.new(color_image.outputs['Alpha'], principled.inputs['Alpha'])
-
-            elif texture.sampler_name in ["texORM", "texORM0"]:
-                mask_image = nodes.new(type='ShaderNodeTexImage')
-                mask_image.location = grid_location(0, 1)
-                mask_image.image = bpy.data.images.load(texture_file)
-                mask_image.image.colorspace_settings.name = 'Non-Color'
-                mask_image.hide = True
-                mask_image.label = texture.sampler_name
-
-                sepRGB_shader = nodes.new(type=sepRGB_name)
-                sepRGB_shader.location = grid_location(1, 1)
-                sepRGB_shader.hide = True
-                mask_link = links.new(mask_image.outputs['Color'], sepRGB_shader.inputs[sepRGB_input])
-
-                # Ambient Occlusion
-                try:
-                    ao_multiply: bpy.types.ShaderNodeMixRGB = nodes.new('ShaderNodeMixRGB')
-                    ao_multiply.location = grid_location(2, 0)
-                    ao_multiply.hide = True
-                    ao_multiply.blend_type = 'MULTIPLY'
-                    ao_multiply.inputs[0].default_value = 1.0
-                    links.new(color_image.outputs['Color'], ao_multiply.inputs[1])
-                    links.new(sepRGB_shader.outputs['Red'], ao_multiply.inputs[2])
-                    links.new(ao_multiply.outputs['Color'], principled.inputs['Base Color'])
-                except:
-                    log.e(f"Could not setup AO for material: {b_mat_name}")
-
-                roughness_link = links.new(sepRGB_shader.outputs[1], principled.inputs['Roughness'])
-                metallic_link = links.new(sepRGB_shader.outputs[2], principled.inputs['Metallic'])
-
-            elif texture.sampler_name in ["texNormal", "texNormal0"]:
-                normal_image = nodes.new(type='ShaderNodeTexImage')
-                normal_image.location = grid_location(0, 2)
-                normal_image.image = bpy.data.images.load(texture_file)
-                normal_image.image.colorspace_settings.name = 'Non-Color'
-                normal_image.hide = True
-                normal_image.label = texture.sampler_name
-
-                # Convert DirectX normal to OpenGL
-                normal_convert = nodes.new('ShaderNodeGroup')
-                normal_convert.node_tree = dx_to_gl_normal()
-                normal_convert.location = grid_location(1, 2)
-                normal_convert.hide = True
-                links.new(normal_image.outputs['Color'], normal_convert.inputs['Color'])
-
-                normalmap_shader = nodes.new(type='ShaderNodeNormalMap')
-                normalmap_shader.location = grid_location(2, 2)
-                normalmap_shader.hide = True
-                
-                combined_link = links.new(normal_convert.outputs[0], normalmap_shader.inputs['Color'])
-                normalmap_link = links.new(normalmap_shader.outputs['Normal'], principled.inputs['Normal'])
-    
-        setup_custom_ui_values(material, material_instance, textures_dir)
+        # Use default material generation
+        default_material(textures_dir, material, material_instance)
+        setup_custom_ui_values(material, material_instance)
     log.i("Blender material generation complete.")
                 
 

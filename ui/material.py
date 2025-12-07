@@ -1,3 +1,5 @@
+from ntpath import isfile
+from typing import Callable
 import bpy
 import os
 
@@ -11,7 +13,10 @@ class MATERIAL_OT_show_image_path(bpy.types.Operator):
     @classmethod
     def description(cls, context, properties):
         path = properties.filepath if properties.filepath else "No image loaded"
-        return f"{path}\n\nClick to copy to clipboard"
+        if os.path.exists(properties.filepath) and os.path.isfile(properties.filepath):
+            return f"Texture Path\n{path}\n\nClick to copy to clipboard"
+        else:
+            return f"Texture Path\nFile not found!"
 
     def execute(self, context):
         if self.filepath:
@@ -19,23 +24,20 @@ class MATERIAL_OT_show_image_path(bpy.types.Operator):
             self.report({'INFO'}, f"Copied to clipboard: {self.filepath}")
         return {'FINISHED'}
 
-class MATERIAL_OT_open_node_image(bpy.types.Operator):
-    bl_idname = "material.open_node_image"
-    bl_label = "Open Image"
-    bl_description = "Open an image file for this texture node"
+class MATERIAL_OT_open_sampler_texture(bpy.types.Operator):
+    bl_idname = "material.open_sampler_texture"
+    bl_label = "Open Texture"
+    bl_description = "Open a texture file for this sampler"
     bl_options = {'REGISTER', 'UNDO'}
 
     filepath: bpy.props.StringProperty(subtype="FILE_PATH")
-    node_name: bpy.props.StringProperty()
+    sampler_index: bpy.props.IntProperty()
 
     def execute(self, context):
         material = context.active_object.active_material
-        if material and material.use_nodes:
-            node = material.node_tree.nodes.get(self.node_name)
-            if node and node.type == 'TEX_IMAGE':
-                # Load or get existing image
-                img = bpy.data.images.load(self.filepath, check_existing=True)
-                node.image = img
+        if material and 0 <= self.sampler_index < len(material.replicant_texture_samplers):
+            sampler = material.replicant_texture_samplers[self.sampler_index]
+            sampler.texture_path = self.filepath
         return {'FINISHED'}
 
     def invoke(self, context, event):
@@ -103,6 +105,7 @@ class MATERIAL_OT_remove_constant(bpy.types.Operator):
 
 # Operators for Texture Parameters
 class MATERIAL_OT_add_texture_parameter(bpy.types.Operator):
+    """Adds a new texture parameter to the active material"""
     bl_idname = "material.add_texture_parameter"
     bl_label = "Add Texture Parameter"
     bl_options = {'REGISTER', 'UNDO'}
@@ -115,6 +118,7 @@ class MATERIAL_OT_add_texture_parameter(bpy.types.Operator):
         return {'FINISHED'}
 
 class MATERIAL_OT_remove_texture_parameter(bpy.types.Operator):
+    """Removes the specified texture parameter from the active material"""
     bl_idname = "material.remove_texture_parameter"
     bl_label = "Remove Texture Parameter"
     bl_options = {'REGISTER', 'UNDO'}
@@ -125,6 +129,35 @@ class MATERIAL_OT_remove_texture_parameter(bpy.types.Operator):
         material = context.active_object.active_material
         if material and 0 <= self.parameter_index < len(material.replicant_texture_parameters):
             material.replicant_texture_parameters.remove(self.parameter_index)
+        return {'FINISHED'}
+
+# Operators for Textures
+class MATERIAL_OT_add_texture_sampler(bpy.types.Operator):
+    """Adds a new texture sampler to the active material"""
+    bl_idname = "material.add_texture_sampler"
+    bl_label = "Add Texture Sampler"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        material = context.active_object.active_material
+        if material:
+            sampler = material.replicant_texture_samplers.add()
+            sampler.name = f"tex{len(material.replicant_texture_samplers)}"
+            sampler.previous_name = sampler.name  # Initialize previous_name
+        return {'FINISHED'}
+
+class MATERIAL_OT_remove_texture_sampler(bpy.types.Operator):
+    """Removes the specified texture sampler from the active material"""
+    bl_idname = "material.remove_texture_sampler"
+    bl_label = "Remove Texture Sampler"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    sampler_index: bpy.props.IntProperty()
+
+    def execute(self, context):
+        material = context.active_object.active_material
+        if material and 0 <= self.sampler_index < len(material.replicant_texture_samplers):
+            material.replicant_texture_samplers.remove(self.sampler_index)
         return {'FINISHED'}
 
 # Helper functions for syncing with nodes
@@ -214,16 +247,61 @@ def buffer_name_update(self, context):
                 self.previous_name = self.name
                 return
 
-class TextureParameter(bpy.types.PropertyGroup):
-    """Represents a texture parameter with a name and 3 integer values"""
+def sampler_name_update(self, context):
+    """Update callback when sampler name changes"""
+    # Find the material that contains this sampler
+    for mat in bpy.data.materials:
+        if not hasattr(mat, 'replicant_texture_samplers') or not mat.use_nodes:
+            continue
+        for sampler in mat.replicant_texture_samplers:
+            if sampler == self:
+                # Find TEX_IMAGE node with old label
+                for node in mat.node_tree.nodes:
+                    if node.type == 'TEX_IMAGE' and node.label == self.previous_name:
+                        node.label = self.name
+                        break
+
+                # Update previous name to current name
+                self.previous_name = self.name
+                return
+
+def texture_path_update(self, context):
+    """Update callback when texture path changes"""
+    # Find the material that contains this sampler
+    for mat in bpy.data.materials:
+        if not hasattr(mat, 'replicant_texture_samplers') or not mat.use_nodes:
+            continue
+        for sampler in mat.replicant_texture_samplers:
+            if sampler == self:
+                # Find ShaderNodeTexImage with matching label
+                for node in mat.node_tree.nodes:
+                    if node.type == 'TEX_IMAGE' and node.label == self.name:
+                        # Load the image if path is valid
+                        if self.texture_path and os.path.exists(self.texture_path):
+                            node.image = bpy.data.images.load(self.texture_path, check_existing=True)
+                        else:
+                            node.image = None
+                return
+
+class TextureSampler(bpy.types.PropertyGroup):
+    """Represents a texture sampler with a PACK and image path"""
     name: bpy.props.StringProperty(
-        name="Parameter Name",
-        default="TPSVAR_CUSTOM"
+        name="Sampler Name",
+        default="texCustom",
+        update=sampler_name_update
     )
-    values: bpy.props.IntVectorProperty(
-        name="Values",
-        size=3,
-        default=(0, 0, 0)
+    previous_name: bpy.props.StringProperty(
+        name="Previous Sampler Name",
+        default="texCustom"
+    )
+    pack_path: bpy.props.StringProperty(
+        name="PACK Path",
+        default=""
+    )
+    texture_path: bpy.props.StringProperty(
+        name="Texture Path",
+        default="",
+        update=texture_path_update
     )
 
 class ConstantValue(bpy.types.PropertyGroup):
@@ -268,6 +346,18 @@ class ConstantBuffer(bpy.types.PropertyGroup):
         default=False
     )
 
+class TextureParameter(bpy.types.PropertyGroup):
+    """Represents a texture parameter with a name and 3 integer values"""
+    name: bpy.props.StringProperty(
+        name="Parameter Name",
+        default="TPSVAR_CUSTOM"
+    )
+    values: bpy.props.IntVectorProperty(
+        name="Values",
+        size=3,
+        default=(0, 0, 0)
+    )
+
 class MATERIAL_PT_replicant(bpy.types.Panel):
     bl_label: str = "NieR Replicant ver.1.2247... Material Instance"
     bl_idname: str = "MATERIAL_PT_replicant"
@@ -285,7 +375,7 @@ class MATERIAL_PT_replicant(bpy.types.Panel):
 
         material = obj.active_material
 
-        layout.prop(material, "replicant_master_material", text="", icon='SHADING_TEXTURE')
+        layout.prop(material, "replicant_master_material", text="Master Material", icon='SHADING_TEXTURE')
 
         texture_samplers(layout, context, material)
         constant_buffers(layout, context, material)
@@ -308,42 +398,41 @@ def texture_samplers(layout, context, material):
     if not context.scene.replicant_show_texture_samplers:
         return
 
-    if not material.use_nodes:
-        box.label(text="Please enable nodes")
-        return
+    for sampler_idx, sampler in enumerate(material.replicant_texture_samplers):
+        sampler_box = box.box()
+        row = sampler_box.row(align=True)
+        row.prop(sampler, "name", text="", icon='IMAGE_DATA')
+        remove_op = row.operator("material.remove_texture_sampler", text="", icon='X')
+        remove_op.sampler_index = sampler_idx
 
-    # Find all Image Texture nodes
-    image_texture_nodes = [node for node in material.node_tree.nodes
-                            if node.type == 'TEX_IMAGE' and node.label.startswith('tex')]
-
-    if not image_texture_nodes:
-        box.label(text="No texture samplers found")
-        return
-
-    for node in image_texture_nodes:
-        row = box.row(align=True)
-
+        row = sampler_box.row(align=True)
         split = row.split(factor=0.5, align=True)
-        split.prop(node, "label", text="", icon='IMAGE_DATA')
+        split.prop(sampler, "pack_path", text="", icon='FILE_PARENT')
 
         # Right column - filename takes up most space, icon button at the end
         right_col = split.row(align=True)
 
         # Show image filename (basename only, full path on hover) - expands to fill
-        if node.image:
-            filepath = node.image.filepath
+        if sampler.texture_path != "":
+            filepath = sampler.texture_path
             basename = os.path.basename(filepath) if filepath else "Unknown"
+            exists= os.path.exists(filepath)
+            icon = 'NONE' if exists else 'ERROR'
 
             # Show basename as a button with full path tooltip
-            path_op = right_col.operator("material.show_image_path", text=basename)
+            path_op = right_col.operator("material.show_image_path", text=basename, icon=icon)
             path_op.filepath = filepath
         else:
             right_col.label(text="No image", icon='ERROR')
 
         # Open image button (small icon only) - always on the right
         icon_col = right_col.column(align=True)
-        op = icon_col.operator("material.open_node_image", text="", icon='FILEBROWSER')
-        op.node_name = node.name
+        op = icon_col.operator("material.open_sampler_texture", text="", icon='FILEBROWSER')
+        op.sampler_index = sampler_idx
+    
+    # Add new texture parameter button
+    add_row = box.row()
+    add_row.operator("material.add_texture_sampler", text="Add Texture Sampler", icon='ADD')
 
 def constant_buffers(layout, context, material):
     box = layout.box()
@@ -465,16 +554,19 @@ def register():
     bpy.utils.register_class(TextureParameter)
     bpy.utils.register_class(ConstantValue)
     bpy.utils.register_class(ConstantBuffer)
+    bpy.utils.register_class(TextureSampler)
 
     # Register operators and panels
     bpy.utils.register_class(MATERIAL_OT_show_image_path)
-    bpy.utils.register_class(MATERIAL_OT_open_node_image)
+    bpy.utils.register_class(MATERIAL_OT_open_sampler_texture)
     bpy.utils.register_class(MATERIAL_OT_add_constant_buffer)
     bpy.utils.register_class(MATERIAL_OT_remove_constant_buffer)
     bpy.utils.register_class(MATERIAL_OT_add_constant)
     bpy.utils.register_class(MATERIAL_OT_remove_constant)
     bpy.utils.register_class(MATERIAL_OT_add_texture_parameter)
     bpy.utils.register_class(MATERIAL_OT_remove_texture_parameter)
+    bpy.utils.register_class(MATERIAL_OT_add_texture_sampler)
+    bpy.utils.register_class(MATERIAL_OT_remove_texture_sampler)
     bpy.utils.register_class(MATERIAL_PT_replicant)
 
     # Add property to track expansion states
@@ -497,6 +589,12 @@ def register():
         default="material/master/master_rs_standard"
     )
 
+    # Add textures to Material
+    bpy.types.Material.replicant_texture_samplers = bpy.props.CollectionProperty(
+        type=TextureSampler,
+        name="Texture Samplers",
+    )
+
     # Add constant buffers to Material
     bpy.types.Material.replicant_constant_buffers = bpy.props.CollectionProperty(
         type=ConstantBuffer,
@@ -513,6 +611,7 @@ def unregister():
     # Remove material properties
     del bpy.types.Material.replicant_texture_parameters
     del bpy.types.Material.replicant_constant_buffers
+    del bpy.types.Material.replicant_texture_samplers
     del bpy.types.Material.replicant_master_material
 
     # Remove scene properties
@@ -522,14 +621,19 @@ def unregister():
 
     # Unregister classes
     bpy.utils.unregister_class(MATERIAL_PT_replicant)
+    bpy.utils.unregister_class(MATERIAL_OT_remove_texture_sampler)
+    bpy.utils.unregister_class(MATERIAL_OT_add_texture_sampler)
     bpy.utils.unregister_class(MATERIAL_OT_remove_texture_parameter)
     bpy.utils.unregister_class(MATERIAL_OT_add_texture_parameter)
     bpy.utils.unregister_class(MATERIAL_OT_remove_constant)
     bpy.utils.unregister_class(MATERIAL_OT_add_constant)
     bpy.utils.unregister_class(MATERIAL_OT_remove_constant_buffer)
     bpy.utils.unregister_class(MATERIAL_OT_add_constant_buffer)
-    bpy.utils.unregister_class(MATERIAL_OT_open_node_image)
+    bpy.utils.unregister_class(MATERIAL_OT_open_sampler_texture)
     bpy.utils.unregister_class(MATERIAL_OT_show_image_path)
+
+    bpy.utils.unregister_class(TextureSampler)
     bpy.utils.unregister_class(ConstantBuffer)
     bpy.utils.unregister_class(ConstantValue)
     bpy.utils.unregister_class(TextureParameter)
+    

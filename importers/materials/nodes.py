@@ -13,14 +13,36 @@ comRGB_output = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
 
 def texture_sampler(material: Material, nodes: Nodes, instance: tpGxMaterialInstanceV2, textures_dir: str, converted_textures: list[str], sampler_name: str) -> Node:
     tex_index = next((i for i, x in enumerate(instance.textures) if x.sampler_name == sampler_name), None)        
-    tex = nodes.new(type='ShaderNodeTexImage')
+    tex_node = nodes.new(type='ShaderNodeTexImage')
     if tex_index is not None:
-        tex.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[tex_index]))
+        texture = search_texture(textures_dir, converted_textures[tex_index])
+        tex_node.image = bpy.data.images.load(texture)
+        for sampler in material.replicant_texture_samplers:
+            if sampler.name == sampler_name:
+                sampler.texture_path = texture
+                break
     else:
         log.w(f"Failed to find sampler {sampler_name} for material: {material.name}")
-    tex.hide = True
-    tex.label = sampler_name
-    return tex
+    tex_node.hide = True
+    tex_node.label = sampler_name
+    return tex_node
+
+def first_texture_sampler(material: Material, nodes: Nodes, instance: tpGxMaterialInstanceV2, textures_dir: str, converted_textures: list[str], sampler_names: list[str]) -> Node:
+    tex_index, tex = next(((i, x) for i, x in enumerate(instance.textures) if x.sampler_name in sampler_names), (None, None))        
+    tex_node = nodes.new(type='ShaderNodeTexImage')
+    if tex_index is not None:
+        sampler_name = tex.sampler_name
+        texture = search_texture(textures_dir, converted_textures[tex_index])
+        tex_node.image = bpy.data.images.load(texture)
+        tex_node.label = sampler_name
+        for sampler in material.replicant_texture_samplers:
+            if sampler.name == sampler_name:
+                sampler.texture_path = texture
+                break
+    else:
+        log.w(f"Failed to find any sampler in {sampler_names} for material: {material.name}")
+    tex_node.hide = True
+    return tex_node
 
 def constant_buffer_value(material: Material, nodes: Nodes, instance: tpGxMaterialInstanceV2, buffer_name: str, constant_name: str) -> Node | None:
     for constant_buffer in instance.constant_buffers:
@@ -34,16 +56,16 @@ def constant_buffer_value(material: Material, nodes: Nodes, instance: tpGxMateri
                 color = nodes.new(type=comRGB_name)
                 color.hide = True
                 color.label = node_label
-                color.inputs['Red'].default_value = constant.value0
-                color.inputs['Green'].default_value = constant.value1
-                color.inputs['Blue'].default_value = constant.value2
+                color.inputs[0].default_value = constant.value0
+                color.inputs[1].default_value = constant.value1
+                color.inputs[2].default_value = constant.value2
                 return color
             elif "uv" in constant_name.lower():
                 vector = nodes.new(type="ShaderNodeCombineXYZ")
                 vector.hide = True
                 vector.label = node_label
-                vector.inputs['X'].default_value = constant.value0
-                vector.inputs['Y'].default_value = constant.value1
+                vector.inputs[0].default_value = constant.value0
+                vector.inputs[1].default_value = constant.value1
                 return vector
             elif "density" in constant_name.lower() or "ior" in constant_name.lower():
                 value = nodes.new(type="ShaderNodeValue")
