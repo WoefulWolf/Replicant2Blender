@@ -1,11 +1,11 @@
 import bpy
 
-from ...classes.asset_package import Asset
+from ...classes.material_instance import tpGxMaterialInstanceV2
 
 from ...util import search_texture, log
 from .nodes import constant_buffer_value, dx_to_gl_normal, grid_location, texture_sampler
 
-def master_rs_layer4(textures_dir: str, material: bpy.types.Material, asset: Asset):
+def master_rs_layer4(textures_dir: str, material: bpy.types.Material, instance: tpGxMaterialInstanceV2):
     # Renamed in 5.0
     sepRGB_name = "ShaderNodeSeparateRGB" if bpy.app.version < (5, 0, 0) else "ShaderNodeSeparateColor"
     sepRGB_input = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
@@ -20,7 +20,7 @@ def master_rs_layer4(textures_dir: str, material: bpy.types.Material, asset: Ass
     material.blend_method = 'CLIP'
 
     converted_textures: list[str] = []
-    for texture in asset.textures:
+    for texture in instance.textures:
         texture_filename_base = texture.texture_name.replace(".rtex", "")
         texture_filename = texture_filename_base + ".png"
         converted_textures.append(texture_filename)
@@ -39,19 +39,19 @@ def master_rs_layer4(textures_dir: str, material: bpy.types.Material, asset: Ass
     links.new(uv1.outputs['UV'], mapping_4.inputs['Vector'])
 
     # gUVOffset4
-    g_uv_offset_4 = constant_buffer_value(material, nodes, asset, "CbLayer4", "gUVOffset4")
+    g_uv_offset_4 = constant_buffer_value(material, nodes, instance, "CbLayer4", "gUVOffset4")
     if g_uv_offset_4 is not None:
         g_uv_offset_4.location = grid_location(-2, 0)
         links.new(g_uv_offset_4.outputs[0], mapping_4.inputs['Location'])
 
     # gUVScale4
-    g_uv_scale_4 = constant_buffer_value(material, nodes, asset, "CbLayer4", "gUVScale4")
+    g_uv_scale_4 = constant_buffer_value(material, nodes, instance, "CbLayer4", "gUVScale4")
     if g_uv_scale_4 is not None:
         g_uv_scale_4.location = grid_location(-2, 1)
         links.new(g_uv_scale_4.outputs[0], mapping_4.inputs['Scale'])
 
     # texLayerMask
-    tex_layer_mask = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texLayerMask")
+    tex_layer_mask = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texLayerMask")
     if tex_layer_mask.image is not None:
         tex_layer_mask.image.colorspace_settings.name = 'Non-Color'
     tex_layer_mask.location = grid_location(0, 0)
@@ -77,13 +77,13 @@ def master_rs_layer4(textures_dir: str, material: bpy.types.Material, asset: Ass
     links.new(uv0.outputs['UV'], mapping_0.inputs['Vector'])
 
     # gUVOffset0
-    g_uv_offset_0 = constant_buffer_value(material, nodes, asset, "CbLayer4", "gUVOffset0")
+    g_uv_offset_0 = constant_buffer_value(material, nodes, instance, "CbLayer4", "gUVOffset0")
     if g_uv_offset_0 is not None:
         g_uv_offset_0.location = grid_location(-2, 3)
         links.new(g_uv_offset_0.outputs[0], mapping_0.inputs['Location'])
 
     # gUVScale0
-    g_uv_scale_0 = constant_buffer_value(material, nodes, asset, "CbLayer4", "gUVScale0")
+    g_uv_scale_0 = constant_buffer_value(material, nodes, instance, "CbLayer4", "gUVScale0")
     if g_uv_scale_0 is not None:
         g_uv_scale_0.location = grid_location(-2, 4)
         links.new(g_uv_scale_0.outputs[0], mapping_0.inputs['Scale'])
@@ -95,13 +95,13 @@ def master_rs_layer4(textures_dir: str, material: bpy.types.Material, asset: Ass
     links.new(uv0.outputs['UV'], mapping_1.inputs['Vector'])
 
     # gUVOffset1
-    g_uv_offset_1 = constant_buffer_value(material, nodes, asset, "CbLayer4", "gUVOffset1")
+    g_uv_offset_1 = constant_buffer_value(material, nodes, instance, "CbLayer4", "gUVOffset1")
     if g_uv_offset_1 is not None:
         g_uv_offset_1.location = grid_location(-2, 5)
         links.new(g_uv_offset_1.outputs[0], mapping_1.inputs['Location'])
 
     # gUVScale1
-    g_uv_scale_1 = constant_buffer_value(material, nodes, asset, "CbLayer4", "gUVScale1")
+    g_uv_scale_1 = constant_buffer_value(material, nodes, instance, "CbLayer4", "gUVScale1")
     if g_uv_scale_1 is not None:
         g_uv_scale_1.location = grid_location(-2, 6)
         links.new(g_uv_scale_1.outputs[0], mapping_1.inputs['Scale'])
@@ -113,13 +113,13 @@ def master_rs_layer4(textures_dir: str, material: bpy.types.Material, asset: Ass
     links.new(uv0.outputs['UV'], mapping_2.inputs['Vector'])
 
     # gUVOffset2
-    g_uv_offset_2 = constant_buffer_value(material, nodes, asset, "CbLayer4", "gUVOffset2")
+    g_uv_offset_2 = constant_buffer_value(material, nodes, instance, "CbLayer4", "gUVOffset2")
     if g_uv_offset_2 is not None:
         g_uv_offset_2.location = grid_location(-2, 7)
         links.new(g_uv_offset_2.outputs[0], mapping_2.inputs['Location'])
 
     # gUVScale2
-    g_uv_scale_2 = constant_buffer_value(material, nodes, asset, "CbLayer4", "gUVScale2")
+    g_uv_scale_2 = constant_buffer_value(material, nodes, instance, "CbLayer4", "gUVScale2")
     if g_uv_scale_2 is not None:
         g_uv_scale_2.location = grid_location(-2, 8)
         links.new(g_uv_scale_2.outputs[0], mapping_2.inputs['Scale'])
@@ -131,34 +131,34 @@ def master_rs_layer4(textures_dir: str, material: bpy.types.Material, asset: Ass
     links.new(uv0.outputs['UV'], mapping_3.inputs['Vector'])
 
     # gUVOffset3
-    g_uv_offset_3 = constant_buffer_value(material, nodes, asset, "CbLayer4", "gUVOffset3")
+    g_uv_offset_3 = constant_buffer_value(material, nodes, instance, "CbLayer4", "gUVOffset3")
     if g_uv_offset_3 is not None:
         g_uv_offset_3.location = grid_location(-2, 9)
         links.new(g_uv_offset_3.outputs[0], mapping_3.inputs['Location'])
 
     # gUVScale3
-    g_uv_scale_3 = constant_buffer_value(material, nodes, asset, "CbLayer4", "gUVScale3")
+    g_uv_scale_3 = constant_buffer_value(material, nodes, instance, "CbLayer4", "gUVScale3")
     if g_uv_scale_3 is not None:
         g_uv_scale_3.location = grid_location(-2, 10)
         links.new(g_uv_scale_3.outputs[0], mapping_3.inputs['Scale'])
 
     # texBaseColor0
-    tex_base_color_0 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texBaseColor0")
+    tex_base_color_0 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texBaseColor0")
     tex_base_color_0.location = grid_location(0, 1)
     links.new(mapping_0.outputs['Vector'], tex_base_color_0.inputs['Vector'])
 
     # texBaseColor1
-    tex_base_color_1 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texBaseColor1")
+    tex_base_color_1 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texBaseColor1")
     tex_base_color_1.location = grid_location(0, 2)
     links.new(mapping_1.outputs['Vector'], tex_base_color_1.inputs['Vector'])
 
     # texBaseColor2
-    tex_base_color_2 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texBaseColor2")
+    tex_base_color_2 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texBaseColor2")
     tex_base_color_2.location = grid_location(0, 3)
     links.new(mapping_2.outputs['Vector'], tex_base_color_2.inputs['Vector'])
 
     # texBaseColor3
-    tex_base_color_3 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texBaseColor3")
+    tex_base_color_3 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texBaseColor3")
     tex_base_color_3.location = grid_location(0, 4)
     links.new(mapping_3.outputs['Vector'], tex_base_color_3.inputs['Vector'])
 
@@ -187,25 +187,25 @@ def master_rs_layer4(textures_dir: str, material: bpy.types.Material, asset: Ass
     links.new(tex_base_color_3.outputs['Color'], mix_col_0123.inputs['Color2'])
 
     # texORM0
-    tex_orm_0 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texORM0")
+    tex_orm_0 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texORM0")
     tex_orm_0.image.colorspace_settings.name = 'Non-Color'
     tex_orm_0.location = grid_location(0, 5)
     links.new(mapping_0.outputs['Vector'], tex_orm_0.inputs['Vector'])
 
     # texORM1
-    tex_orm_1 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texORM1")
+    tex_orm_1 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texORM1")
     tex_orm_1.image.colorspace_settings.name = 'Non-Color'
     tex_orm_1.location = grid_location(0, 6)
     links.new(mapping_1.outputs['Vector'], tex_orm_1.inputs['Vector'])
 
     # texORM2
-    tex_orm_2 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texORM2")
+    tex_orm_2 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texORM2")
     tex_orm_2.image.colorspace_settings.name = 'Non-Color'
     tex_orm_2.location = grid_location(0, 7)
     links.new(mapping_2.outputs['Vector'], tex_orm_2.inputs['Vector'])
 
     # texORM3
-    tex_orm_3 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texORM3")
+    tex_orm_3 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texORM3")
     tex_orm_3.image.colorspace_settings.name = 'Non-Color'
     tex_orm_3.location = grid_location(0, 8)
     links.new(mapping_3.outputs['Vector'], tex_orm_3.inputs['Vector'])
@@ -250,25 +250,25 @@ def master_rs_layer4(textures_dir: str, material: bpy.types.Material, asset: Ass
     links.new(orm_0123_sep.outputs[0], ao_multiply.inputs[2])
 
     # texNormal0
-    tex_normal_0 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texNormal0")
+    tex_normal_0 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texNormal0")
     tex_normal_0.image.colorspace_settings.name = 'Non-Color'
     tex_normal_0.location = grid_location(0, 9)
     links.new(mapping_0.outputs['Vector'], tex_normal_0.inputs['Vector'])
 
     # texNormal1
-    tex_normal_1 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texNormal1")
+    tex_normal_1 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texNormal1")
     tex_normal_1.image.colorspace_settings.name = 'Non-Color'
     tex_normal_1.location = grid_location(0, 10)
     links.new(mapping_1.outputs['Vector'], tex_normal_1.inputs['Vector'])
 
     # texNormal2
-    tex_normal_2 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texNormal2")
+    tex_normal_2 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texNormal2")
     tex_normal_2.image.colorspace_settings.name = 'Non-Color'
     tex_normal_2.location = grid_location(0, 11)
     links.new(mapping_2.outputs['Vector'], tex_normal_2.inputs['Vector'])
 
     # texNormal3
-    tex_normal_3 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texNormal3")
+    tex_normal_3 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texNormal3")
     tex_normal_3.image.colorspace_settings.name = 'Non-Color'
     tex_normal_3.location = grid_location(0, 12)
     links.new(mapping_3.outputs['Vector'], tex_normal_3.inputs['Vector'])

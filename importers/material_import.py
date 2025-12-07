@@ -1,6 +1,8 @@
 import os
 import bpy
+from bpy.types import Material
 
+from ..classes.material_instance import tpGxMaterialInstanceV2
 from ..classes.asset_package import tpXonAssetHeader
 from ..classes.tex_head import get_DXGI_format, get_alpha_mode, tpGxTexHead
 from ..classes.pack import Pack, PackFile
@@ -16,6 +18,47 @@ from .materials.master_rs_xlu_water import master_rs_xlu_water
 from .materials.nodes import dx_to_gl_normal, grid_location
 from ..util import *
 
+# Map material type names to their handler functions
+MATERIAL_HANDLERS = {
+    "master_rs_standard": master_rs_standard,
+    "master_rs_layer2": master_rs_layer2,
+    "master_rs_layer3": master_rs_layer3,
+    "master_rs_layer4": master_rs_layer4,
+    "master_rs_hair": master_rs_hair,
+    "master_rs_ao_sheet": master_rs_ao_sheet,
+    "master_rs_leaf": master_rs_leaf,
+    "master_rs_xlu_water": master_rs_xlu_water,
+}
+
+def setup_custom_ui_values(material: Material, material_instance: tpGxMaterialInstanceV2, textures_dir: str):
+    material.replicant_master_material = material_instance.parent_asset_path
+    for constant_buffer in material_instance.constant_buffers:
+        cb = material.replicant_constant_buffers.add()
+        cb.name = constant_buffer.constant_buffer_name
+        cb.previous_name = cb.name
+        for constant in constant_buffer.constants:
+            const = cb.constants.add()
+            const.name = constant.constant_name
+            const.previous_name = const.name
+            const.values = (constant.value0, constant.value1, constant.value2, constant.value3, constant.value4, constant.value5)
+    for texture_parameter in material_instance.texture_parameters:
+        tp = material.replicant_texture_parameters.add()
+        tp.name = texture_parameter.parameter_name
+        tp.values = (texture_parameter.value0, texture_parameter.value1, texture_parameter.value2)
+    texture_node_labels = [node.label for node in material.node_tree.nodes if node.type == 'TEX_IMAGE']
+    for texture in material_instance.textures:
+        if texture.sampler_name in texture_node_labels:
+            continue
+        image_node = material.node_tree.nodes.new(type='ShaderNodeTexImage')
+        image_node.location = grid_location(-5, -5)
+        image_node.hide = True
+        image_node.label = texture.sampler_name
+        texture_filename_base = texture.texture_name.replace(".rtex", "")
+        texture_filename = texture_filename_base + ".png"
+        texture_file = search_texture(textures_dir, texture_filename)
+        if texture_file is not None:
+            image_node.image = bpy.data.images.load(texture_file)
+
 def construct_materials(pack_dir: str, material_packs: list[Pack]):
     log.i("Generating Blender materials...")
     textures_dir = pack_dir + "\\replicant2blender_extracted\\"
@@ -29,43 +72,28 @@ def construct_materials(pack_dir: str, material_packs: list[Pack]):
     for pack in material_packs:
         material_name = pack.asset_packages[0].name
         material_asset_header: tpXonAssetHeader = pack.asset_packages[0].content.asset_data
+        material_instance: tpGxMaterialInstanceV2 = material_asset_header.assets[0].asset_content
 
         b_mat_name = material_name.split("_", 1)[1].split(".")[0].lower()
 
-        material_asset = material_asset_header.assets[0]
-
         if b_mat_name in bpy.data.materials:
             material = bpy.data.materials[b_mat_name]
-            # continue
+            material.replicant_constant_buffers.clear()
+            material.replicant_texture_parameters.clear()
         else:
             material = bpy.data.materials.new(b_mat_name)
 
         log.d(f"Generating material {b_mat_name}")
 
         try:
-            if "master_rs_standard" in material_asset.parent_asset_path:
-                master_rs_standard(textures_dir, material, material_asset)
-                continue
-            elif "master_rs_layer2" in material_asset.parent_asset_path:
-                master_rs_layer2(textures_dir, material, material_asset)
-                continue
-            elif "master_rs_layer3" in material_asset.parent_asset_path:
-                master_rs_layer3(textures_dir, material, material_asset)
-                continue
-            elif "master_rs_layer4" in material_asset.parent_asset_path:
-                master_rs_layer4(textures_dir, material, material_asset)
-                continue
-            elif "master_rs_hair" in material_asset.parent_asset_path:
-                master_rs_hair(textures_dir, material, material_asset)
-                continue
-            elif "master_rs_ao_sheet" in material_asset.parent_asset_path:
-                master_rs_ao_sheet(textures_dir, material, material_asset)
-                continue
-            elif "master_rs_leaf" in material_asset.parent_asset_path:
-                master_rs_leaf(textures_dir, material, material_asset)
-                continue
-            elif "master_rs_xlu_water" in material_asset.parent_asset_path:
-                master_rs_xlu_water(textures_dir, material, material_asset)
+            handled = False
+            for material_type, handler in MATERIAL_HANDLERS.items():
+                if material_type in material_instance.parent_asset_path:
+                    handler(textures_dir, material, material_instance)
+                    setup_custom_ui_values(material, material_instance, textures_dir)
+                    handled = True
+                    break
+            if handled:
                 continue
         except Exception as e:
             log.w(f"Failed to construct shader for material: {material.name} ({e})")
@@ -83,7 +111,7 @@ def construct_materials(pack_dir: str, material_packs: list[Pack]):
         principled.location = grid_location(3, 0)
         output_link = links.new( principled.outputs['BSDF'], output.inputs['Surface'])
 
-        for texture in material_asset.textures:
+        for texture in material_instance.textures:
             texture_filename_base = texture.texture_name.replace(".rtex", "")
             texture_filename = texture_filename_base + ".png"
             texture_file = search_texture(textures_dir, texture_filename)
@@ -151,6 +179,8 @@ def construct_materials(pack_dir: str, material_packs: list[Pack]):
                 
                 combined_link = links.new(normal_convert.outputs[0], normalmap_shader.inputs['Color'])
                 normalmap_link = links.new(normalmap_shader.outputs['Normal'], principled.inputs['Normal'])
+    
+        setup_custom_ui_values(material, material_instance, textures_dir)
     log.i("Blender material generation complete.")
                 
 

@@ -1,9 +1,10 @@
 import os, bpy
 
+from ..classes.asset_package import tpXonAssetHeader
 from .levelData_import import importLevelData
 from ..classes.pack import *
 from .mesh_import import construct_meshes
-from .material_import import construct_materials, extract_textures, tpGxTexHead
+from .material_import import construct_materials, extract_textures
 from ..util import log
 
 imported_texture_packs = []
@@ -43,9 +44,26 @@ def main(pack_path: str, do_extract_textures: bool, do_construct_materials: bool
                     continue
             
             if (material_pack_path not in imported_material_packs):
-                imported_material_packs.append(material_pack_path)
                 log.i(f"Parsing Material PACK file... {import_entry.path}")
-                material_packs.append(Pack.from_file(material_pack_path))
+                material_pack = Pack.from_file(material_pack_path)
+                imported_material_packs.append(material_pack_path)
+                has_material = False
+                for package in material_pack.asset_packages:
+                    if package.content is None:
+                        continue
+                    bxon = package.content
+                    if bxon.asset_type != "tpXonAssetHeader":
+                        continue
+                    asset_header: tpXonAssetHeader = bxon.asset_data
+                    for asset in asset_header.assets:
+                        if asset.asset_type_hash == 0x3ABE8760:
+                            has_material = True
+                            break
+                    if has_material:
+                        material_packs.append(material_pack)
+                        break
+                if not has_material:
+                    log.w(f"{import_entry.path} did not contain any material instances, skipping...")
 
         texture_packs: list[Pack] = []
         for material_pack in material_packs:
@@ -63,9 +81,17 @@ def main(pack_path: str, do_extract_textures: bool, do_construct_materials: bool
                         continue
 
                 if (texture_pack_path not in imported_texture_packs):
-                    imported_texture_packs.append(texture_pack_path)
                     log.i(f"Parsing Texture PACK file... {import_entry.path}")
-                    texture_packs.append(Pack.from_file(texture_pack_path))
+                    texture_pack = Pack.from_file(texture_pack_path)
+                    imported_texture_packs.append(texture_pack_path)
+                    has_textures = False
+                    for file in texture_pack.files:
+                        if file.name.endswith("rtex"):
+                            has_textures = True
+                            texture_packs.append(texture_pack)
+                            break
+                    if not has_textures:
+                        log.w(f"{import_entry.path} did not contain any textures, skipping...")
 
         if do_extract_textures:
             failed_texture_files: list[PackFile] = extract_textures(pack_directory, texture_packs)

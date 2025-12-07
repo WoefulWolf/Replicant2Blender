@@ -2,9 +2,8 @@ from bpy.types import Material, Node, NodeTree, Nodes
 
 import bpy
 
+from ...classes.material_instance import tpGxMaterialInstanceV2
 from ...util import log, search_texture
-
-from ...classes.asset_package import Asset
 
 # Renamed in 5.0
 sepRGB_name = "ShaderNodeSeparateRGB" if bpy.app.version < (5, 0, 0) else "ShaderNodeSeparateColor"
@@ -12,8 +11,8 @@ sepRGB_input = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
 comRGB_name = "ShaderNodeCombineRGB" if bpy.app.version < (5, 0, 0) else "ShaderNodeCombineColor"
 comRGB_output = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
 
-def texture_sampler(material: Material, nodes: Nodes, asset: Asset, textures_dir: str, converted_textures: list[str], sampler_name: str) -> Node:
-    tex_index = next((i for i, x in enumerate(asset.textures) if x.sampler_name == sampler_name), None)        
+def texture_sampler(material: Material, nodes: Nodes, instance: tpGxMaterialInstanceV2, textures_dir: str, converted_textures: list[str], sampler_name: str) -> Node:
+    tex_index = next((i for i, x in enumerate(instance.textures) if x.sampler_name == sampler_name), None)        
     tex = nodes.new(type='ShaderNodeTexImage')
     if tex_index is not None:
         tex.image = bpy.data.images.load(search_texture(textures_dir, converted_textures[tex_index]))
@@ -23,17 +22,18 @@ def texture_sampler(material: Material, nodes: Nodes, asset: Asset, textures_dir
     tex.label = sampler_name
     return tex
 
-def constant_buffer_value(material: Material, nodes: Nodes, asset: Asset, buffer_name: str, constant_name: str) -> Node | None:
-    for constant_buffer in asset.constant_buffers:
+def constant_buffer_value(material: Material, nodes: Nodes, instance: tpGxMaterialInstanceV2, buffer_name: str, constant_name: str) -> Node | None:
+    for constant_buffer in instance.constant_buffers:
         if constant_buffer.constant_buffer_name != buffer_name:
             continue
         for constant in constant_buffer.constants:
             if constant.constant_name != constant_name:
                 continue
+            node_label = f"{buffer_name}_{constant_name}"
             if "color" in constant_name.lower():
                 color = nodes.new(type=comRGB_name)
                 color.hide = True
-                color.label = constant_name
+                color.label = node_label
                 color.inputs['Red'].default_value = constant.value0
                 color.inputs['Green'].default_value = constant.value1
                 color.inputs['Blue'].default_value = constant.value2
@@ -41,14 +41,14 @@ def constant_buffer_value(material: Material, nodes: Nodes, asset: Asset, buffer
             elif "uv" in constant_name.lower():
                 vector = nodes.new(type="ShaderNodeCombineXYZ")
                 vector.hide = True
-                vector.label = constant_name
+                vector.label = node_label
                 vector.inputs['X'].default_value = constant.value0
                 vector.inputs['Y'].default_value = constant.value1
                 return vector
             elif "density" in constant_name.lower() or "ior" in constant_name.lower():
                 value = nodes.new(type="ShaderNodeValue")
                 value.hide = True
-                value.label = constant_name
+                value.label = node_label
                 value.outputs[0].default_value = constant.value0
                 return value
     log.w(f"Failed to find constant {constant_name} in {buffer_name} for material: {material.name}")

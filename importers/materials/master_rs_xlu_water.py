@@ -1,10 +1,10 @@
 import bpy
 
-from ...classes.asset_package import Asset
+from ...classes.material_instance import tpGxMaterialInstanceV2
 
 from .nodes import constant_buffer_value, dx_to_gl_normal, grid_location, texture_sampler
 
-def master_rs_xlu_water(textures_dir: str, material: bpy.types.Material, asset: Asset):
+def master_rs_xlu_water(textures_dir: str, material: bpy.types.Material, instance: tpGxMaterialInstanceV2):
     # Renamed in 5.0
     sepRGB_name = "ShaderNodeSeparateRGB" if bpy.app.version < (5, 0, 0) else "ShaderNodeSeparateColor"
     sepRGB_input = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
@@ -20,7 +20,7 @@ def master_rs_xlu_water(textures_dir: str, material: bpy.types.Material, asset: 
     material.volume_intersection_method = 'ACCURATE'
 
     converted_textures: list[str] = []
-    for texture in asset.textures:
+    for texture in instance.textures:
         texture_filename_base = texture.texture_name.replace(".rtex", "")
         texture_filename = texture_filename_base + ".png"
         converted_textures.append(texture_filename)
@@ -44,7 +44,7 @@ def master_rs_xlu_water(textures_dir: str, material: bpy.types.Material, asset: 
     uv0.hide = True
 
     # gUVOffset0
-    g_uv_offset_0 = constant_buffer_value(material, nodes, asset, "CbTransparentWater", "gUVOffset0")
+    g_uv_offset_0 = constant_buffer_value(material, nodes, instance, "CbTransparentWater", "gUVOffset0")
     if g_uv_offset_0 is not None:
         g_uv_offset_0.location = grid_location(0, 2)
 
@@ -58,7 +58,7 @@ def master_rs_xlu_water(textures_dir: str, material: bpy.types.Material, asset: 
         links.new(g_uv_offset_0.outputs['Vector'], g_uv_offset_0_mul_time.inputs[1])
 
     # gUVScale0
-    g_uv_scale_0 = constant_buffer_value(material, nodes, asset, "CbTransparentWater", "gUVScale0")
+    g_uv_scale_0 = constant_buffer_value(material, nodes, instance, "CbTransparentWater", "gUVScale0")
     if g_uv_scale_0 is not None:
         g_uv_scale_0.location = grid_location(0, 3)
 
@@ -72,7 +72,7 @@ def master_rs_xlu_water(textures_dir: str, material: bpy.types.Material, asset: 
         links.new(g_uv_scale_0.outputs['Vector'], mapping_0.inputs['Scale'])
 
     # gUVOffset1
-    g_uv_offset_1 = constant_buffer_value(material, nodes, asset, "CbTransparentWater", "gUVOffset1")
+    g_uv_offset_1 = constant_buffer_value(material, nodes, instance, "CbTransparentWater", "gUVOffset1")
     if g_uv_offset_1 is not None:
         g_uv_offset_1.location = grid_location(0, 4)
 
@@ -86,7 +86,7 @@ def master_rs_xlu_water(textures_dir: str, material: bpy.types.Material, asset: 
         links.new(g_uv_offset_1.outputs['Vector'], g_uv_offset_1_mul_time.inputs[1])
 
     # gUVScale1
-    g_uv_scale_1 = constant_buffer_value(material, nodes, asset, "CbTransparentWater", "gUVScale1")
+    g_uv_scale_1 = constant_buffer_value(material, nodes, instance, "CbTransparentWater", "gUVScale1")
     if g_uv_scale_1 is not None:
         g_uv_scale_1.location = grid_location(0, 5)
 
@@ -100,38 +100,38 @@ def master_rs_xlu_water(textures_dir: str, material: bpy.types.Material, asset: 
         links.new(g_uv_scale_1.outputs['Vector'], mapping_1.inputs['Scale'])
 
     # gBaseColor
-    g_base_color = constant_buffer_value(material, nodes, asset, "CbTransparentWater", "gBaseColor")
+    g_base_color = constant_buffer_value(material, nodes, instance, "CbTransparentWater", "gBaseColor")
     if g_base_color is not None:
         g_base_color.location = grid_location(3, 1)
 
     # texORM
-    tex_orm = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texORM")
+    tex_orm = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texORM")
     if tex_orm.image is not None:
         tex_orm.image.colorspace_settings.name = 'Non-Color'
     tex_orm.location = grid_location(3, 2)
     links.new(mapping_0.outputs['Vector'], tex_orm.inputs['Vector'])
 
     # texNormal0
-    tex_normal_0 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texNormal0")
+    tex_normal_0 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texNormal0")
     if tex_normal_0.image is not None:
         tex_normal_0.image.colorspace_settings.name = 'Non-Color'
     tex_normal_0.location = grid_location(3, 3)
     links.new(mapping_0.outputs['Vector'], tex_normal_0.inputs['Vector'])
 
     # texNormal1
-    tex_normal_1 = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texNormal1")
+    tex_normal_1 = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texNormal1")
     if tex_normal_1.image is not None:
         tex_normal_1.image.colorspace_settings.name = 'Non-Color'
     tex_normal_1.location = grid_location(3, 4)
     links.new(mapping_1.outputs['Vector'], tex_normal_1.inputs['Vector'])
 
     # texFoamColor
-    tex_foam_color = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texFoamColor")
+    tex_foam_color = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texFoamColor")
     tex_foam_color.location = grid_location(3, 5)
     links.new(mapping_0.outputs['Vector'], tex_foam_color.inputs['Vector'])
 
     # texFoamIntensity
-    tex_foam_intensity = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texFoamIntensity")
+    tex_foam_intensity = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texFoamIntensity")
     tex_foam_intensity.location = grid_location(3, 6)
     links.new(mapping_0.outputs['Vector'], tex_foam_intensity.inputs['Vector'])
 
@@ -206,7 +206,7 @@ def master_rs_xlu_water(textures_dir: str, material: bpy.types.Material, asset: 
     links.new(tex_normal_dx_gl.outputs[0], normal_map.inputs['Color'])
 
     # gIor
-    g_ior = constant_buffer_value(material, nodes, asset, "CbTransparentWater", "gIor")
+    g_ior = constant_buffer_value(material, nodes, instance, "CbTransparentWater", "gIor")
     if g_ior is not None:
         g_ior.location = grid_location(7, 4)
 
@@ -258,12 +258,12 @@ def master_rs_xlu_water(textures_dir: str, material: bpy.types.Material, asset: 
     links.new(transmission_1_mix_0.outputs[0], principled.inputs['Transmission Weight'])
 
     # gFogColor
-    g_fog_color = constant_buffer_value(material, nodes, asset, "CbTransparentWater", "gFogColor")
+    g_fog_color = constant_buffer_value(material, nodes, instance, "CbTransparentWater", "gFogColor")
     if g_fog_color is not None:
         g_fog_color.location = grid_location(10, 2)
 
     # gFogDensity
-    g_fog_density = constant_buffer_value(material, nodes, asset, "CbTransparentWater", "gFogDensity")
+    g_fog_density = constant_buffer_value(material, nodes, instance, "CbTransparentWater", "gFogDensity")
     if g_fog_density is not None:
         g_fog_density.location = grid_location(10, 3)
 

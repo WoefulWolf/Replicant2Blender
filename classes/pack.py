@@ -37,13 +37,14 @@ class PackAssetPackage:
         # Read BXON content
         content_pos = content_start_offset + offset_to_content_start
         content_end_pos = content_end_offset + offset_to_content_end
-        stream.seek(content_pos)
 
         # Store raw bytes for later serialization
+        stream.seek(content_pos)
         raw_content_bytes = stream.read(content_end_pos - content_pos)
 
         # Parse BXON from the raw bytes
-        content = BXON.from_bytes(raw_content_bytes)
+        stream.seek(content_pos)
+        content = BXON.from_stream(stream)
 
         return cls(
             name_hash=name_hash,

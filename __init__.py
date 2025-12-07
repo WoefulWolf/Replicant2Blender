@@ -2,9 +2,10 @@ import bpy
 import os
 from bpy_extras.io_utils import ExportHelper,ImportHelper
 from bpy.types import Operator, OperatorFileListElement
+
 from .importers import pack_import
 from .exporters import pack_export
-from .ui import output
+from .ui import output, material
 from .util import log, show_blender_system_console
 
 class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
@@ -55,15 +56,17 @@ def register():
     bpy.utils.register_class(Replicant2BlenderPreferences)
     pack_export.register()
     output.register()
+    material.register()
     log.d("Registered")
 
 def unregister():
     log.d("Unregistering...")
-    bpy.utils.unregister_class(ImportReplicantMeshPack)
-    bpy.types.TOPBAR_MT_file_import.remove(replicant_import_mesh_pack)
-    bpy.utils.unregister_class(Replicant2BlenderPreferences)
+    material.unregister()
     output.unregister()
     pack_export.unregister()
+    bpy.utils.unregister_class(Replicant2BlenderPreferences)
+    bpy.types.TOPBAR_MT_file_import.remove(replicant_import_mesh_pack)
+    bpy.utils.unregister_class(ImportReplicantMeshPack)
     log.d("Unregistered")
 
 if __name__ == '__main__':

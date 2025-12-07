@@ -1,10 +1,10 @@
 import bpy
 
-from ...classes.asset_package import Asset
+from ...classes.material_instance import tpGxMaterialInstanceV2
 
 from .nodes import constant_buffer_value, dx_to_gl_normal, grid_location, texture_sampler
 
-def master_rs_ao_sheet(textures_dir: str, material: bpy.types.Material, asset: Asset):
+def master_rs_ao_sheet(textures_dir: str, material: bpy.types.Material, instance: tpGxMaterialInstanceV2):
     # Renamed in 5.0
     sepRGB_name = "ShaderNodeSeparateRGB" if bpy.app.version < (5, 0, 0) else "ShaderNodeSeparateColor"
     sepRGB_input = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
@@ -19,13 +19,13 @@ def master_rs_ao_sheet(textures_dir: str, material: bpy.types.Material, asset: A
     material.blend_method = 'BLEND'
 
     converted_textures: list[str] = []
-    for texture in asset.textures:
+    for texture in instance.textures:
         texture_filename_base = texture.texture_name.replace(".rtex", "")
         texture_filename = texture_filename_base + ".png"
         converted_textures.append(texture_filename)
 
     # gColorMultiply
-    g_color_multiply = constant_buffer_value(material, nodes, asset, "CbAOSheet", "gColorMultiply")
+    g_color_multiply = constant_buffer_value(material, nodes, instance, "CbAOSheet", "gColorMultiply")
     if g_color_multiply is not None:
         g_color_multiply.location = grid_location(0, 0)
 

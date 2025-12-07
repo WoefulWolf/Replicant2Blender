@@ -1,10 +1,10 @@
 import bpy
 
-from ...classes.asset_package import Asset
+from ...classes.material_instance import tpGxMaterialInstanceV2
 
 from .nodes import dx_to_gl_normal, grid_location, texture_sampler
 
-def master_rs_hair(textures_dir: str, material: bpy.types.Material, asset: Asset):
+def master_rs_hair(textures_dir: str, material: bpy.types.Material, instance: tpGxMaterialInstanceV2):
     # Renamed in 5.0
     sepRGB_name = "ShaderNodeSeparateRGB" if bpy.app.version < (5, 0, 0) else "ShaderNodeSeparateColor"
     sepRGB_input = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
@@ -19,17 +19,17 @@ def master_rs_hair(textures_dir: str, material: bpy.types.Material, asset: Asset
     material.blend_method = 'CLIP'
 
     converted_textures: list[str] = []
-    for texture in asset.textures:
+    for texture in instance.textures:
         texture_filename_base = texture.texture_name.replace(".rtex", "")
         texture_filename = texture_filename_base + ".png"
         converted_textures.append(texture_filename)
 
     # texBaseColor     
-    tex_base_color = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texBaseColor")
+    tex_base_color = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texBaseColor")
     tex_base_color.location = grid_location(0, 0)
 
     # texSecondAO
-    tex_second_ao = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texSecondAO")
+    tex_second_ao = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texSecondAO")
     tex_second_ao.location = grid_location(0, 1)
 
     #texSecondAO UV Map
@@ -40,12 +40,12 @@ def master_rs_hair(textures_dir: str, material: bpy.types.Material, asset: Asset
     links.new(uv1.outputs['UV'], tex_second_ao.inputs['Vector'])
 
     # texORM
-    tex_orm = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texORM")
+    tex_orm = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texORM")
     tex_orm.image.colorspace_settings.name = 'Non-Color'
     tex_orm.location = grid_location(0, 2)
 
     # texNormal
-    tex_normal = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texNormal")
+    tex_normal = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texNormal")
     tex_orm.image.colorspace_settings.name = 'Non-Color'
     tex_normal.location = grid_location(0, 3)
 

@@ -1,10 +1,10 @@
 import bpy
 
-from ...classes.asset_package import Asset
+from ...classes.material_instance import tpGxMaterialInstanceV2
 
 from .nodes import constant_buffer_value, dx_to_gl_normal, grid_location, texture_sampler
 
-def master_rs_leaf(textures_dir: str, material: bpy.types.Material, asset: Asset):
+def master_rs_leaf(textures_dir: str, material: bpy.types.Material, instance: tpGxMaterialInstanceV2):
     # Renamed in 5.0
     sepRGB_name = "ShaderNodeSeparateRGB" if bpy.app.version < (5, 0, 0) else "ShaderNodeSeparateColor"
     sepRGB_input = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
@@ -19,7 +19,7 @@ def master_rs_leaf(textures_dir: str, material: bpy.types.Material, asset: Asset
     material.blend_method = 'CLIP'
 
     converted_textures: list[str] = []
-    for texture in asset.textures:
+    for texture in instance.textures:
         texture_filename_base = texture.texture_name.replace(".rtex", "")
         texture_filename = texture_filename_base + ".png"
         converted_textures.append(texture_filename)
@@ -37,38 +37,38 @@ def master_rs_leaf(textures_dir: str, material: bpy.types.Material, asset: Asset
     links.new(uv0.outputs['UV'], mapping.inputs['Vector'])
 
     # gUVOffset
-    g_uv_offset = constant_buffer_value(material, nodes, asset, "CbLeaf", "gUVOffset")
+    g_uv_offset = constant_buffer_value(material, nodes, instance, "CbLeaf", "gUVOffset")
     if g_uv_offset is not None:
         g_uv_offset.location = grid_location(-2, 0)
         links.new(g_uv_offset.outputs[0], mapping.inputs['Location'])
 
     # gUVScale
-    g_uv_scale = constant_buffer_value(material, nodes, asset, "CbLeaf", "gUVScale")
+    g_uv_scale = constant_buffer_value(material, nodes, instance, "CbLeaf", "gUVScale")
     if g_uv_scale is not None:
         g_uv_scale.location = grid_location(-2, 1)
         links.new(g_uv_scale.outputs[0], mapping.inputs['Scale'])
 
     # texBaseColor     
-    tex_base_color = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texBaseColor")
+    tex_base_color = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texBaseColor")
     tex_base_color.location = grid_location(0, 0)
     links.new(mapping.outputs['Vector'], tex_base_color.inputs['Vector'])
 
     # texORM
-    tex_orm = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texORM")
+    tex_orm = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texORM")
     if tex_orm.image is not None:
         tex_orm.image.colorspace_settings.name = 'Non-Color'
     tex_orm.location = grid_location(0, 1)
     links.new(mapping.outputs['Vector'], tex_orm.inputs['Vector'])
 
     # texNormal
-    tex_normal = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texNormal")
+    tex_normal = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texNormal")
     if tex_normal.image is not None:
         tex_normal.image.colorspace_settings.name = 'Non-Color'
     tex_normal.location = grid_location(0, 2)
     links.new(mapping.outputs['Vector'], tex_normal.inputs['Vector'])
 
     # texThickness
-    tex_thickness = texture_sampler(material, nodes, asset, textures_dir, converted_textures, "texThickness")
+    tex_thickness = texture_sampler(material, nodes, instance, textures_dir, converted_textures, "texThickness")
     if tex_thickness.image is not None:
         tex_thickness.image.colorspace_settings.name = 'Non-Color'
     tex_thickness.location = grid_location(0, 3)
