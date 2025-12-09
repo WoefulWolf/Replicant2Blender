@@ -19,7 +19,7 @@ def default_material(textures_dir: str, material: bpy.types.Material, instance: 
     material.blend_method = 'CLIP'
 
     converted_textures: list[str] = []
-    for texture in instance.textures:
+    for texture in instance.texture_samplers:
         texture_filename_base = texture.texture_name.replace(".rtex", "")
         texture_filename = texture_filename_base + ".png"
         converted_textures.append(texture_filename)
@@ -114,7 +114,7 @@ def default_material(textures_dir: str, material: bpy.types.Material, instance: 
         links.new(tex_orm_sep.outputs[1], principled.inputs['Roughness'])
         links.new(tex_orm_sep.outputs[2], principled.inputs['Metallic'])
     else:
-        links.new(tex_base_color.outputs['Color'], principled.inputs['base Color'])
+        links.new(tex_base_color.outputs['Color'], principled.inputs['Base Color'])
     if tex_normal:
         links.new(normal_map.outputs['Normal'], principled.inputs['Normal'])
 

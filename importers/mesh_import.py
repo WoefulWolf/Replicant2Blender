@@ -197,6 +197,11 @@ def construct_meshes(pack: Pack):
                     log.e(f"Could not find material {b_material.name} in {b_obj.name}!")
                     continue
 
+                for import_path in pack.imports:
+                    if b_material.name in import_path.path:
+                        b_material.replicant_mesh_import_path = import_path.path
+                        break
+
                 # Directly index faces by their position in the bmesh
                 face_start = material_group.index_start // 3
                 face_end = (material_group.index_start + material_group.index_count) // 3

@@ -12,6 +12,7 @@ from .tex_data import tpGxTexData
 
 from .bxon import BXON
 from .common import read_string, DataOffset, Import
+from .asset_package import AssetTypeHash
 
 
 @dataclass
@@ -80,7 +81,7 @@ class PackAssetPackage:
         writer.patch_placeholder(content_start_placeholder, content_pos)
 
         if self.content:
-            if self.content.asset_type == "tpXonAssetHeader" and self.content.asset_data.asset_count == 0:
+            if self.content.asset_type == "tpXonAssetHeader" and  all(a.asset_type_hash == AssetTypeHash.tpGxMaterialInstanceV2 for a in self.content.asset_data.assets):
                 self.content.write_to(writer)
                 writer.align_min_padding(8, 8)
             else:

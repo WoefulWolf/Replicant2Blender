@@ -20,7 +20,7 @@ def master_rs_xlu_water(textures_dir: str, material: bpy.types.Material, instanc
     material.volume_intersection_method = 'ACCURATE'
 
     converted_textures: list[str] = []
-    for texture in instance.textures:
+    for texture in instance.texture_samplers:
         texture_filename_base = texture.texture_name.replace(".rtex", "")
         texture_filename = texture_filename_base + ".png"
         converted_textures.append(texture_filename)

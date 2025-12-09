@@ -12,7 +12,7 @@ comRGB_name = "ShaderNodeCombineRGB" if bpy.app.version < (5, 0, 0) else "Shader
 comRGB_output = 'Image' if bpy.app.version < (5, 0, 0) else "Color"
 
 def texture_sampler(material: Material, nodes: Nodes, instance: tpGxMaterialInstanceV2, textures_dir: str, converted_textures: list[str], sampler_name: str) -> Node:
-    tex_index = next((i for i, x in enumerate(instance.textures) if x.sampler_name == sampler_name), None)        
+    tex_index = next((i for i, x in enumerate(instance.texture_samplers) if x.name == sampler_name), None)        
     tex_node = nodes.new(type='ShaderNodeTexImage')
     if tex_index is not None:
         texture = search_texture(textures_dir, converted_textures[tex_index])
@@ -28,10 +28,10 @@ def texture_sampler(material: Material, nodes: Nodes, instance: tpGxMaterialInst
     return tex_node
 
 def first_texture_sampler(material: Material, nodes: Nodes, instance: tpGxMaterialInstanceV2, textures_dir: str, converted_textures: list[str], sampler_names: list[str]) -> Node:
-    tex_index, tex = next(((i, x) for i, x in enumerate(instance.textures) if x.sampler_name in sampler_names), (None, None))        
+    tex_index, tex = next(((i, x) for i, x in enumerate(instance.texture_samplers) if x.name in sampler_names), (None, None))        
     tex_node = nodes.new(type='ShaderNodeTexImage')
     if tex_index is not None:
-        sampler_name = tex.sampler_name
+        sampler_name = tex.name
         texture = search_texture(textures_dir, converted_textures[tex_index])
         tex_node.image = bpy.data.images.load(texture)
         tex_node.label = sampler_name
@@ -46,10 +46,10 @@ def first_texture_sampler(material: Material, nodes: Nodes, instance: tpGxMateri
 
 def constant_buffer_value(material: Material, nodes: Nodes, instance: tpGxMaterialInstanceV2, buffer_name: str, constant_name: str) -> Node | None:
     for constant_buffer in instance.constant_buffers:
-        if constant_buffer.constant_buffer_name != buffer_name:
+        if constant_buffer.name != buffer_name:
             continue
         for constant in constant_buffer.constants:
-            if constant.constant_name != constant_name:
+            if constant.name != constant_name:
                 continue
             node_label = f"{buffer_name}_{constant_name}"
             if "color" in constant_name.lower():

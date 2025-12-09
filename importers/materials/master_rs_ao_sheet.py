@@ -19,7 +19,7 @@ def master_rs_ao_sheet(textures_dir: str, material: bpy.types.Material, instance
     material.blend_method = 'BLEND'
 
     converted_textures: list[str] = []
-    for texture in instance.textures:
+    for texture in instance.texture_samplers:
         texture_filename_base = texture.texture_name.replace(".rtex", "")
         texture_filename = texture_filename_base + ".png"
         converted_textures.append(texture_filename)

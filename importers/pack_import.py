@@ -1,6 +1,6 @@
 import os, bpy
 
-from ..classes.asset_package import tpXonAssetHeader
+from ..classes.asset_package import tpXonAssetHeader, AssetTypeHash
 from .levelData_import import importLevelData
 from ..classes.pack import *
 from .mesh_import import construct_meshes
@@ -56,7 +56,7 @@ def main(pack_path: str, do_extract_textures: bool, do_construct_materials: bool
                         continue
                     asset_header: tpXonAssetHeader = bxon.asset_data
                     for asset in asset_header.assets:
-                        if asset.asset_type_hash == 0x3ABE8760:
+                        if asset.asset_type_hash == AssetTypeHash.tpGxMaterialInstanceV2:
                             has_material = True
                             break
                     if has_material:

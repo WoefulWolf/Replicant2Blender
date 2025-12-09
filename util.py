@@ -1,13 +1,10 @@
 #encoding = utf-8
 import os
-import sys
 import struct
 from typing import Tuple
 import bpy
-from bpy.types import Collection, Material, Object
+from bpy.types import Collection, Context, Material, Object, UILayout
 import numpy as np
-import math
-from enum import Enum
 from datetime import datetime
 
 def to_float(bs) -> float:
@@ -152,7 +149,16 @@ def get_collection_objects(collections: list[Collection], collection_name: str) 
 def get_collection_materials(collections: list[Collection], collection_name: str) -> list[Material]:
 	return [mat for o in get_collection_objects(collections, collection_name) for mat in o.data.materials if mat is not None]
 
-def get_export_materials() -> list[Material]:
+def get_export_collections_materials() -> list[Material]:
 	collections_to_export = [col for col in bpy.context.scene.collection.children if any(obj.type == 'MESH' for obj in col.objects) and col.replicant_export]
 	collections_objects = [o for c in collections_to_export for o in c.objects if o.type == 'MESH']
 	return [mat for o in collections_objects for mat in o.data.materials if mat is not None]
+
+def label_multiline(context: Context, parent: UILayout, text: str):
+	import textwrap
+	uifontscale = 6.6 * context.preferences.view.ui_scale
+	chars = int(context.region.width / uifontscale)
+	wrapper = textwrap.TextWrapper(width=chars)
+	text_lines = wrapper.wrap(text=text)
+	for text_line in text_lines:
+		parent.label(text=text_line)

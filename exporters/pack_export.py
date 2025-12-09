@@ -4,13 +4,15 @@ from bpy.types import Operator
 from bpy.props import EnumProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
 
+from ..util import get_collection_objects, get_export_collections_materials, label_multiline
+from . import material_export
 from . import texture_export
 from . import mesh_export
 
 class EXPORT_OT_replicant_pack(Operator, ExportHelper):
     bl_idname = "export.replicant_pack"
-    bl_label = "Export PACK"
-    bl_description = "Export data in selected collections to a NieR Replicant PACK format"
+    bl_label = "Export PACK(s)"
+    bl_description = "Export data in selected collections to NieR Replicant PACK format"
     bl_options = {'REGISTER', 'UNDO'}
     
     filename_ext = ""
@@ -27,14 +29,72 @@ class EXPORT_OT_replicant_pack(Operator, ExportHelper):
         items=[
             ('MESH', "Mesh", "Export mesh PACK"),
             ('TEXTURE', "Texture", "Export texture PACK"),
-            ('MATERIAL', "Material", "Export material PACK"),
+            ('MATERIAL', "Material", "Export material PACK(s)"),
         ],
         default='MESH',
         options={'HIDDEN'}
     )
+
     texture_pack: StringProperty(
         options={'HIDDEN'}
     )
+
+    directory: StringProperty(
+        subtype='DIR_PATH',
+        options={'HIDDEN'}
+    )
+
+    def draw(self, context) -> None:
+        layout = self.layout
+        if self.type == 'MATERIAL':
+            label_multiline(context, layout, "Please select a directory where the following material PACK(s) will be written to:")
+            box = layout.box()
+            materials = list(set([m for m in get_export_collections_materials() if m.replicant_master_material and m.replicant_export]))
+            for mat in materials:
+                box.label(text=f"mtl_{mat.name}", icon='NODE_SOCKET_SHADER')
+        elif self.type == 'TEXTURE':
+            label_multiline(context, layout, "Please specify a file which the following texture PACK will be written to:")
+            box = layout.box()
+            box.label(text=self.texture_pack, icon='FILE_FOLDER')
+            tex_box = box.box()
+            export_materials = get_export_collections_materials()
+            replicant_materials = [m for m in export_materials if m.replicant_master_material]
+            texture_packs: dict[str, list[Material]] = {}
+            for material in replicant_materials:
+                for sampler in material.replicant_texture_samplers:
+                    if sampler.pack_path in texture_packs:
+                        if material in texture_packs[sampler.pack_path]:
+                            continue
+                        texture_packs[sampler.pack_path].append(material)
+                        continue
+                    else:
+                        texture_packs[sampler.pack_path] = [material]
+            materials = texture_packs[self.texture_pack]
+            texture_paths = set()
+            for mat in materials:
+                for sampler in mat.replicant_texture_samplers:
+                    if sampler.texture_path in texture_paths:
+                        continue
+                    else:
+                        texture_paths.add(sampler.texture_path)
+                    texture_basename = os.path.basename(sampler.texture_path)
+                    texture_filename = os.path.splitext(texture_basename)[0] + ".rtex"
+                    tex_box.label(text=texture_filename, icon='NODE_SOCKET_TEXTURE')
+        elif self.type == 'MESH':
+            label_multiline(context, layout, "Please specify a file which the following mesh PACK will be written to:")
+            collections_to_export = [col for col in context.scene.collection.children if any(obj.type == 'MESH' for obj in col.objects) and col.replicant_export]
+            for collection in collections_to_export:
+                box = layout.box()
+                row = box.row()
+                row.label(text=collection.name, icon='OUTLINER_COLLECTION')
+                obj_box = box.box()
+                objects = get_collection_objects(collections_to_export, collection.name)
+                for obj in objects:
+                    obj_box.label(text=obj.name, icon='MESH_MONKEY')
+                continue
+            return
+
+        return
 
     def invoke(self, context, event):
         # Validate before opening file dialog
@@ -51,6 +111,15 @@ class EXPORT_OT_replicant_pack(Operator, ExportHelper):
             self.report({'ERROR'}, "No collections selected for export")
             return {'CANCELLED'}
 
+        # For material export, use directory selection
+        if self.type == 'MATERIAL':
+            materials = list(set([m for m in get_export_collections_materials() if m.replicant_master_material and m.replicant_export]))
+            if len(materials) == 0:
+                self.report({'ERROR'}, "No materials selected for export")
+                return {'CANCELLED'}
+            context.window_manager.fileselect_add(self)
+            return {'RUNNING_MODAL'}
+
         # Set default filename to match original pack file
         if self.type == 'MESH':
             self.filepath = os.path.basename(original_pack_path)
@@ -62,10 +131,10 @@ class EXPORT_OT_replicant_pack(Operator, ExportHelper):
     def execute(self, context):
         if self.type == 'MESH':
             return mesh_export.export(self)
-        if self.type == 'TEXTURE':
+        elif self.type == 'TEXTURE':
             return texture_export.export(self)
-        else:
-            self.report({'ERROR'}, "Not yet implemented")
+        elif self.type == 'MATERIAL':
+            return material_export.export(self)
             return {'CANCELLED'}
 
 

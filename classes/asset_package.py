@@ -2,10 +2,15 @@ import struct
 from dataclasses import dataclass
 from typing import List, BinaryIO
 from io import BytesIO
+from enum import IntEnum
 
 from ..classes.material_instance import tpGxMaterialInstanceV2
 
 from .common import read_string, align_relative, Import
+
+
+class AssetTypeHash(IntEnum):
+    tpGxMaterialInstanceV2 = 0x3ABE8760
 
 
 @dataclass
@@ -22,8 +27,8 @@ class Asset:
         stream.seek(asset_start_offset + offset_to_asset)
         asset_type_hash = struct.unpack('<I', stream.read(4))[0]
 
-        # Only tpGxMaterialInstanceV2 (0x3ABE8760) is fully implemented
-        if asset_type_hash != 0x3ABE8760:
+        # Only tpGxMaterialInstanceV2 is fully implemented
+        if asset_type_hash != AssetTypeHash.tpGxMaterialInstanceV2:
             stream.seek(asset_return_pos)
             return cls(
                 asset_type_hash=asset_type_hash,
@@ -64,17 +69,12 @@ class Asset:
 
 @dataclass
 class tpXonAssetHeader:
-    asset_count: int
-    import_count: int
-
     assets: list[Asset]
     imports: list[Import]
 
     @classmethod
     def new(cls) -> 'tpXonAssetHeader':
         return cls(
-            asset_count=0,
-            import_count=0,
             assets=[],
             imports=[]
         )
@@ -104,8 +104,6 @@ class tpXonAssetHeader:
                 imports.append(Import.from_stream(stream))
 
         return cls(
-            asset_count=asset_count,
-            import_count=import_count,
             assets=assets,
             imports=imports
         )

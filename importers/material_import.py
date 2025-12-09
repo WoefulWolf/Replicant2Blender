@@ -66,9 +66,9 @@ def setup_material_texture_samplers(material: Material, material_asset: tpXonAss
     imports = [i.path for i in material_asset.imports]
     material.replicant_master_material = material_instance.parent_asset_path
 
-    for texture in material_instance.textures:
+    for texture in material_instance.texture_samplers:
         sampler = material.replicant_texture_samplers.add()
-        sampler.name = texture.sampler_name
+        sampler.name = texture.name
         sampler.previous_name = sampler.name
         tex_name = texture.texture_name.rpartition('.')[0]
         texture_path = _find_texture_path(tex_name, textures_dir)
@@ -97,16 +97,16 @@ def setup_texture_sampler_dxgi_data(texture_packs: list[Pack]):
 def setup_custom_ui_values(material: Material, material_instance: tpGxMaterialInstanceV2):
     for constant_buffer in material_instance.constant_buffers:
         cb = material.replicant_constant_buffers.add()
-        cb.name = constant_buffer.constant_buffer_name
+        cb.name = constant_buffer.name
         cb.previous_name = cb.name
         for constant in constant_buffer.constants:
             const = cb.constants.add()
-            const.name = constant.constant_name
+            const.name = constant.name
             const.previous_name = const.name
             const.values = (constant.value0, constant.value1, constant.value2, constant.value3, constant.value4, constant.value5)
     for texture_parameter in material_instance.texture_parameters:
         tp = material.replicant_texture_parameters.add()
-        tp.name = texture_parameter.parameter_name
+        tp.name = texture_parameter.name
         tp.values = (texture_parameter.value0, texture_parameter.value1, texture_parameter.value2)
 
 def construct_materials(pack_dir: str, material_packs: list[Pack]):

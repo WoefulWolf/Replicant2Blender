@@ -4,7 +4,7 @@ import bpy
 from bpy.props import StringProperty, BoolProperty, CollectionProperty, PointerProperty
 from bpy.types import Material, UILayout
 
-from ..util import get_export_materials
+from ..util import get_export_collections_materials
 
 class OUTPUT_OT_toggle_texture_pack_expand(bpy.types.Operator):
     """Toggle texture pack expand/collapse state"""
@@ -66,8 +66,8 @@ class OUTPUT_OT_rename_texture_pack(bpy.types.Operator):
 
         # Rebuild expanded packs list with only valid packs that exist after rename
         # First, build the current set of all pack paths
-        from ..util import get_export_materials
-        export_materials = get_export_materials()
+        from ..util import get_export_collections_materials
+        export_materials = get_export_collections_materials()
         replicant_materials = [m for m in export_materials if m.replicant_master_material]
         valid_packs = set()
         for material in replicant_materials:
@@ -164,6 +164,27 @@ def material_export(layout: UILayout, context: Context):
     if not context.scene.replicant_show_material_export:
         return
 
+    mats_box = box.box()
+    materials = list(set([m for m in get_export_collections_materials() if m.replicant_master_material]))
+    
+    if len(materials) == 0:
+        mats_box.label(text="None found", icon='INFO')
+        return
+    
+    for material in materials:
+        row = mats_box.row()
+        row.label(text=material.name, icon='NODE_SOCKET_SHADER')
+        sub_row = row.row()
+        sub_row.enabled = False
+        sub_row.label(text=material.replicant_master_material)
+        row.prop(material, "replicant_export", text="")
+
+    # Export button
+    row = box.row()
+    row.scale_y = 2.0
+    op = row.operator("export.replicant_pack", text="Export Material PACK(s)", icon='EXPORT')
+    op.type = 'MATERIAL'
+
 def texture_export(layout: UILayout, context: Context):
     box = layout.box()
     header = box.row(align=True)
@@ -180,7 +201,7 @@ def texture_export(layout: UILayout, context: Context):
     if not context.scene.replicant_show_texture_export:
         return
 
-    export_materials = get_export_materials()
+    export_materials = get_export_collections_materials()
     replicant_materials = [m for m in export_materials if m.replicant_master_material]
     texture_packs: dict[str, list[Material]] = {}
     for material in replicant_materials:
@@ -195,6 +216,11 @@ def texture_export(layout: UILayout, context: Context):
 
     # Get set of expanded packs
     expanded_packs = set(context.scene.replicant_expanded_texture_packs.split(',')) if context.scene.replicant_expanded_texture_packs else set()
+
+    if len(texture_packs) == 0:
+        box = box.box()
+        box.label(text="None found", icon='INFO')
+        return
 
     for pack, materials in texture_packs.items():
         pack_box = box.box()

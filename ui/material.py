@@ -453,6 +453,7 @@ class MATERIAL_PT_replicant(bpy.types.Panel):
 
         material = obj.active_material
 
+        layout.prop(material, "replicant_mesh_import_path", text="Import PACK Path", icon='FILE_PARENT')
         layout.prop(material, "replicant_master_material", text="Master Material", icon='SHADING_TEXTURE')
 
         texture_samplers(layout, context, material)
@@ -661,6 +662,12 @@ def register():
         default=False
     )
 
+    # Add mesh import material path
+    bpy.types.Material.replicant_mesh_import_path = bpy.props.StringProperty(
+        name="Mesh Import Path",
+        default=""
+    )
+
     # Add master material to Material
     bpy.types.Material.replicant_master_material = bpy.props.StringProperty(
         name="Master Material",
@@ -683,6 +690,12 @@ def register():
     bpy.types.Material.replicant_texture_parameters = bpy.props.CollectionProperty(
         type=TextureParameter,
         name="Texture Parameters"
+    )
+
+    bpy.types.Material.replicant_export = bpy.props.BoolProperty(
+        name="Export",
+        description="Include this material in the export",
+        default=True
     )
 
 def unregister():

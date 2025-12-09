@@ -5,10 +5,11 @@ from dataclasses import dataclass, field
 from bpy.types import Collection, Material, Mesh, Object
 
 from ..classes.mesh_data import BonesBuffer, ColorsBuffer, NormalsBuffer, PositionsBuffer, UVsBuffer, WeightsBuffer
-from ..classes.common import VertexBufferType
+from ..classes.common import Import, VertexBufferType
 from ..classes.mesh_head import MaterialGroup, tpGxMeshHead
+from ..classes.mesh_head import Material as MeshMaterial
 from ..classes.pack import Pack
-from ..util import get_collection_objects, log
+from ..util import fnv1, get_collection_objects, log
 
 def export(operator):
     filepath: str = operator.filepath
@@ -30,6 +31,7 @@ def export(operator):
     start = time.perf_counter()
     log.i(f"Opening original PACK: {original_pack_path}")
     pack = Pack.from_file(original_pack_path)
+    pack.imports.clear()
     for file_data in pack.files_data:
         file = pack.files[file_data.file_index]
         mesh_head: tpGxMeshHead = file.content.asset_data
@@ -41,10 +43,16 @@ def export(operator):
         log.d(f"Found {len(b_objs)} objects to export to {file.name}")
 
         # Collect all necessary data
+        mesh_head.materials.clear()
         materials: list[str] = []
         for b_obj in b_objs:
             for material in b_obj.data.materials:
                 materials.append(material.name)
+                mesh_head.materials.append(MeshMaterial(
+                    name=material.name,
+                    unknown_uint32=4,
+                    unknown_byte=0
+                ))
         log.d(f"Found {len(materials)} materials used.")
 
         material_groups = []
@@ -52,6 +60,8 @@ def export(operator):
         log.d("Generating mesh data...")
         for i, b_obj in enumerate(b_objs):
             log.d(f"\t{b_obj.name}...")
+            update_imports(pack, b_obj)
+
             vertex_data = VertexData(b_obj)
             index_data, material_group = get_loops_and_material_groups(b_obj, i, materials)
             if index_data is None or material_group is None:
@@ -296,3 +306,13 @@ def get_loops_and_material_groups(obj: Object, obj_index: int, materials: list[s
 
 
     return loops, material_groups
+
+def update_imports(pack: Pack, obj: Object):
+    import_paths = [p.path for p in pack.imports]
+    for material in obj.data.materials:
+        if material.replicant_mesh_import_path != "" and material.replicant_mesh_import_path not in import_paths:
+            pack.imports.append(Import(
+                path_hash=fnv1(material.replicant_mesh_import_path),
+                path=material.replicant_mesh_import_path,
+                unknown0=0
+            ))

@@ -13,7 +13,7 @@ from ..classes.asset_package import tpXonAssetHeader
 from ..classes.binary_writer import BinaryWriter
 from ..classes.bxon import BXON
 from ..classes.pack import Pack, PackAssetPackage, PackFile, PackFileData
-from ..util import fnv1, get_export_materials, log
+from ..util import fnv1, get_export_collections_materials, log
 
 
 def export(operator):
@@ -40,7 +40,7 @@ def export(operator):
         raw_content_bytes=asset_header_bxon_bytes.get_bytes()
     )
 
-    export_materials = get_export_materials()
+    export_materials = get_export_collections_materials()
     replicant_materials = [m for m in export_materials if m.replicant_master_material]
     texture_packs: dict[str, list[Material]] = {}
     for material in replicant_materials:
