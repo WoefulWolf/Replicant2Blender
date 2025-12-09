@@ -19,7 +19,7 @@ def texture_sampler(material: Material, nodes: Nodes, instance: tpGxMaterialInst
         tex_node.image = bpy.data.images.load(texture)
         for sampler in material.replicant_texture_samplers:
             if sampler.name == sampler_name:
-                sampler.texture_path = texture
+                # sampler.texture_path = texture # Temporarily disable to prioritise DDS
                 break
     else:
         log.w(f"Failed to find sampler {sampler_name} for material: {material.name}")
@@ -37,7 +37,7 @@ def first_texture_sampler(material: Material, nodes: Nodes, instance: tpGxMateri
         tex_node.label = sampler_name
         for sampler in material.replicant_texture_samplers:
             if sampler.name == sampler_name:
-                sampler.texture_path = texture
+                # sampler.texture_path = texture # Temporarily disable to prioritise DDS
                 break
     else:
         log.w(f"Failed to find any sampler in {sampler_names} for material: {material.name}")

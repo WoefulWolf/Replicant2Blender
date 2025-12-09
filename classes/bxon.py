@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from typing import Optional, Union, BinaryIO
 from io import BytesIO
 
+from ..classes.binary_writer import BinaryWriter
+
 from .common import read_string
 
 
@@ -63,9 +65,7 @@ class BXON:
     def from_bytes(cls, data: bytes) -> 'BXON | None':
         return cls.from_stream(BytesIO(data))
 
-    def write_to(self, writer) -> None:
-        from .binary_writer import BinaryWriter
-
+    def write_to(self, writer: BinaryWriter) -> None:
         # Write header
         writer.write_struct('<4s', self.magic)
         writer.write_struct('<I', self.version)

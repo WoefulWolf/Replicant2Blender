@@ -3,6 +3,8 @@ import os
 import sys
 import struct
 from typing import Tuple
+import bpy
+from bpy.types import Collection, Material, Object
 import numpy as np
 import math
 from enum import Enum
@@ -29,6 +31,22 @@ def to_string(bs, encoding = 'utf8') -> str:
 def alignRelative(openFile, relativeStart, alignment):
 	alignOffset = (((openFile.tell() - relativeStart) // alignment) + 1) * alignment
 	openFile.seek(relativeStart + alignOffset)
+
+def fnv1(data) -> int:
+	"""Calculate FNV-1 32-bit hash of a string or bytes."""
+	if isinstance(data, str):
+		data = data.encode('utf-8')
+
+	# FNV-1 32-bit parameters
+	FNV_PRIME = 16777619
+	FNV_OFFSET_BASIS = 2166136261
+
+	hash_value = FNV_OFFSET_BASIS
+	for byte in data:
+		hash_value = (hash_value * FNV_PRIME) & 0xFFFFFFFF
+		hash_value = hash_value ^ byte
+
+	return hash_value
 
 def str_to_bytes(var):
 	return bytearray(var, 'utf-8')
@@ -123,3 +141,18 @@ class Logger:
 
 # Global logger instance
 log = Logger("Replicant2Blender")
+
+def get_collection_objects(collections: list[Collection], collection_name: str) -> list[Object]:
+    for collection in collections:
+        if collection.name != collection_name:
+            continue
+        return [o for o in collection.objects if o.type == 'MESH']
+    return []
+
+def get_collection_materials(collections: list[Collection], collection_name: str) -> list[Material]:
+	return [mat for o in get_collection_objects(collections, collection_name) for mat in o.data.materials if mat is not None]
+
+def get_export_materials() -> list[Material]:
+	collections_to_export = [col for col in bpy.context.scene.collection.children if any(obj.type == 'MESH' for obj in col.objects) and col.replicant_export]
+	collections_objects = [o for c in collections_to_export for o in c.objects if o.type == 'MESH']
+	return [mat for o in collections_objects for mat in o.data.materials if mat is not None]

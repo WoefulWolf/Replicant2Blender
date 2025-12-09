@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from typing import BinaryIO
 from io import BytesIO
 
+from ..classes.binary_writer import BinaryWriter
+from ..classes.tex_head import tpGxTexHead
 from ..classes.mesh_head import tpGxMeshHead
 
 from .mesh_data import tpGxMeshData
@@ -16,9 +18,8 @@ from .common import read_string, DataOffset, Import
 class PackAssetPackage:
     name_hash: int
     name: str
-    content_size: int
     content: BXON | None
-    raw_content_bytes: bytes | None  # Store raw bytes for serialization
+    raw_content_bytes: bytes
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'PackAssetPackage':
@@ -49,19 +50,18 @@ class PackAssetPackage:
         return cls(
             name_hash=name_hash,
             name=name,
-            content_size=content_size,
             content=content,
             raw_content_bytes=raw_content_bytes
         )
 
-    def write_to(self, writer) -> None:
+    def write_to(self, writer: BinaryWriter) -> None:
         from .binary_writer import BinaryWriter
 
         writer.write_struct('<I', self.name_hash)
 
         name_start_offset = writer.tell()
         name_placeholder = writer.write_placeholder('<I', name_start_offset)
-        writer.write_struct('<I', self.content_size)
+        writer.write_struct('<I', len(self.raw_content_bytes))
 
         content_start_offset = writer.tell()
         content_start_placeholder = writer.write_placeholder('<I', content_start_offset)
@@ -79,7 +79,13 @@ class PackAssetPackage:
         content_pos = writer.tell()
         writer.patch_placeholder(content_start_placeholder, content_pos)
 
-        if self.raw_content_bytes:
+        if self.content:
+            if self.content.asset_type == "tpXonAssetHeader" and self.content.asset_data.asset_count == 0:
+                self.content.write_to(writer)
+                writer.align_min_padding(8, 8)
+            else:
+                writer.write(self.raw_content_bytes)
+        else:
             writer.write(self.raw_content_bytes)
 
         content_end_pos = writer.tell()
@@ -97,10 +103,9 @@ class PackAssetPackage:
 class PackFile:
     name_hash: int
     name: str
-    content_size: int
     content: BXON | None
     data_offset: DataOffset
-    raw_content_bytes: bytes | None  # Store raw bytes for non-modified files
+    raw_content_bytes: bytes
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'PackFile':
@@ -134,7 +139,6 @@ class PackFile:
         return cls(
             name_hash=name_hash,
             name=name,
-            content_size=content_size,
             content=content,
             data_offset=data_offset,
             raw_content_bytes=raw_content_bytes
@@ -205,6 +209,22 @@ class PackHeader:
     files_offset: int
 
     @classmethod
+    def new(cls) -> 'PackHeader':
+        return cls(
+            magic=b'PACK',
+            version=4,
+            pack_total_size=0,
+            pack_serialized_size=0,
+            pack_files_data_size=0,
+            imports_count=0,
+            imports_offset=0,
+            asset_packages_count=0,
+            asset_packages_offset=0,
+            files_count=0,
+            files_offset=0
+        )
+
+    @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'PackHeader':
         magic = struct.unpack('<4s', stream.read(4))[0]
         version = struct.unpack('<I', stream.read(4))[0]
@@ -256,6 +276,16 @@ class Pack:
     asset_packages: list[PackAssetPackage]
     files: list[PackFile]
     files_data: list[PackFileData]
+
+    @classmethod
+    def new(cls) -> 'Pack':
+        return cls(
+            header=PackHeader.new(),
+            imports=[],
+            asset_packages=[],
+            files=[],
+            files_data=[]
+        )
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'Pack':
@@ -406,6 +436,11 @@ class Pack:
                 # Record the start of this meshData for relative alignment
                 mesh_data_start = writer.tell()
                 file_data.mesh_data.write_to(writer, mesh_data_start, mesh_head)
+            if file_data.tex_data:
+                file = self.files[file_data.file_index]
+                file.data_offset.offset = writer.tell() - files_data_start
+                tex_head: tpGxTexHead = file.content.asset_data
+                file_data.tex_data.write_to(writer, tex_head)
 
         writer.align_relative_proper_null_terminated(files_data_start, 4)
 

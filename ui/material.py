@@ -3,6 +3,22 @@ from typing import Callable
 import bpy
 import os
 
+dxgi_format_strings = ['UNKNOWN', 'R32G32B32A32_TYPELESS', 'R32G32B32A32_FLOAT', 'R32G32B32A32_UINT', 'R32G32B32A32_SINT', 'R32G32B32_TYPELESS', 'R32G32B32_FLOAT', 'R32G32B32_UINT', 'R32G32B32_SINT', 'R16G16B16A16_TYPELESS', 'R16G16B16A16_FLOAT', 'R16G16B16A16_UNORM', 'R16G16B16A16_UINT', 'R16G16B16A16_SNORM', 'R16G16B16A16_SINT', 'R32G32_TYPELESS', 'R32G32_FLOAT', 'R32G32_UINT', 'R32G32_SINT', 'R32G8X24_TYPELESS', 'D32_FLOAT_S8X24_UINT', 'R32_FLOAT_X8X24_TYPELESS', 'X32_TYPELESS_G8X24_UINT', 'R10G10B10A2_TYPELESS', 'R10G10B10A2_UNORM', 'R10G10B10A2_UINT', 'R11G11B10_FLOAT', 'R8G8B8A8_TYPELESS', 'R8G8B8A8_UNORM', 'R8G8B8A8_UNORM_SRGB', 'R8G8B8A8_UINT', 'R8G8B8A8_SNORM', 'R8G8B8A8_SINT', 'R16G16_TYPELESS', 'R16G16_FLOAT', 'R16G16_UNORM', 'R16G16_UINT', 'R16G16_SNORM', 'R16G16_SINT', 'R32_TYPELESS', 'D32_FLOAT', 'R32_FLOAT', 'R32_UINT', 'R32_SINT', 'R24G8_TYPELESS', 'D24_UNORM_S8_UINT', 'R24_UNORM_X8_TYPELESS', 'X24_TYPELESS_G8_UINT', 'R8G8_TYPELESS', 'R8G8_UNORM', 'R8G8_UINT', 'R8G8_SNORM', 'R8G8_SINT', 'R16_TYPELESS', 'R16_FLOAT', 'D16_UNORM', 'R16_UNORM', 'R16_UINT', 'R16_SNORM', 'R16_SINT', 'R8_TYPELESS', 'R8_UNORM', 'R8_UINT', 'R8_SNORM', 'R8_SINT', 'A8_UNORM', 'R1_UNORM', 'R9G9B9E5_SHAREDEXP', 'R8G8_B8G8_UNORM', 'G8R8_G8B8_UNORM', 'BC1_TYPELESS', 'BC1_UNORM', 'BC1_UNORM_SRGB', 'BC2_TYPELESS', 'BC2_UNORM', 'BC2_UNORM_SRGB', 'BC3_TYPELESS', 'BC3_UNORM', 'BC3_UNORM_SRGB', 'BC4_TYPELESS', 'BC4_UNORM', 'BC4_SNORM', 'BC5_TYPELESS', 'BC5_UNORM', 'BC5_SNORM', 'B5G6R5_UNORM', 'B5G5R5A1_UNORM', 'B8G8R8A8_UNORM', 'B8G8R8X8_UNORM', 'R10G10B10_XR_BIAS_A2_UNORM', 'B8G8R8A8_TYPELESS', 'B8G8R8A8_UNORM_SRGB', 'B8G8R8X8_TYPELESS', 'B8G8R8X8_UNORM_SRGB', 'BC6H_TYPELESS', 'BC6H_UF16', 'BC6H_SF16', 'BC7_TYPELESS', 'BC7_UNORM', 'BC7_UNORM_SRGB', 'AYUV', 'Y410', 'Y416', 'NV12', 'P010', 'P016', 'OPAQUE_420', 'YUY2', 'Y210', 'Y216', 'NV11', 'AI44', 'IA44', 'P8', 'A8P8', 'B4G4R4A4_UNORM']
+
+def get_dxgi_format_items():
+    """Generate enum items for DXGI formats with descriptions for common BC formats"""
+    items = []
+    for fmt in dxgi_format_strings:
+        desc = ""
+        if "BC1" in fmt:
+            desc = "DXT1"
+        elif "BC2" in fmt:
+            desc = "DXT2/3"
+        elif "BC3" in fmt:
+            desc = "DXT4/5"
+        items.append((fmt, fmt, desc))
+    return items
+
 class MATERIAL_OT_show_image_path(bpy.types.Operator):
     bl_idname = "material.show_image_path"
     bl_label = "Image Path"
@@ -38,6 +54,13 @@ class MATERIAL_OT_open_sampler_texture(bpy.types.Operator):
         if material and 0 <= self.sampler_index < len(material.replicant_texture_samplers):
             sampler = material.replicant_texture_samplers[self.sampler_index]
             sampler.texture_path = self.filepath
+            if self.filepath.endswith(".dds"):
+                from puredds import DDS
+                with open(self.filepath, 'rb') as f:
+                    data = f.read()
+                dds = DDS.from_bytes(data)
+                sampler.dxgi_format = dds.get_format_str()
+                sampler.mip_maps = dds.get_mip_count() > 1
         return {'FINISHED'}
 
     def invoke(self, context, event):
@@ -283,6 +306,48 @@ def texture_path_update(self, context):
                             node.image = None
                 return
 
+def dxgi_format_update(self, context):
+    """Update callback when DXGI format changes - syncs format across all samplers with same pack/texture paths"""
+    # Get the pack_path and texture_path from the current sampler
+    pack_path = self.pack_path
+    texture_path = self.texture_path
+    new_format = self.dxgi_format
+
+    # Find all texture samplers in all materials with matching paths
+    for mat in bpy.data.materials:
+        if not hasattr(mat, 'replicant_texture_samplers'):
+            continue
+        for sampler in mat.replicant_texture_samplers:
+            # Skip the current sampler itself
+            if sampler == self:
+                continue
+            # Update format if both pack_path and texture_path match, and format is different
+            if (sampler.pack_path == pack_path and
+                sampler.texture_path == texture_path and
+                sampler.dxgi_format != new_format):
+                sampler.dxgi_format = new_format
+
+def mip_maps_update(self, context):
+    """Update callback when generate Mipmaps changes - syncs format across all samplers with same pack/texture paths"""
+    # Get the pack_path and texture_path from the current sampler
+    pack_path = self.pack_path
+    texture_path = self.texture_path
+    new_value = self.mip_maps
+
+    # Find all texture samplers in all materials with matching paths
+    for mat in bpy.data.materials:
+        if not hasattr(mat, 'replicant_texture_samplers'):
+            continue
+        for sampler in mat.replicant_texture_samplers:
+            # Skip the current sampler itself
+            if sampler == self:
+                continue
+            # Update format if both pack_path and texture_path match, and format is different
+            if (sampler.pack_path == pack_path and
+                sampler.texture_path == texture_path and
+                sampler.mip_maps != new_value):
+                sampler.mip_maps = new_value
+
 class TextureSampler(bpy.types.PropertyGroup):
     """Represents a texture sampler with a PACK and image path"""
     name: bpy.props.StringProperty(
@@ -302,6 +367,19 @@ class TextureSampler(bpy.types.PropertyGroup):
         name="Texture Path",
         default="",
         update=texture_path_update
+    )
+    dxgi_format: bpy.props.EnumProperty(
+        name="DXGI Format",
+        description="Output DirectX texture compression format",
+        items=get_dxgi_format_items(),
+        default='BC1_UNORM_SRGB',
+        update=dxgi_format_update
+    )
+    mip_maps: bpy.props.BoolProperty(
+        name="Generate Mipmaps",
+        description="Generate Mipmaps when output",
+        default=True,
+        update=mip_maps_update
     )
 
 class ConstantValue(bpy.types.PropertyGroup):

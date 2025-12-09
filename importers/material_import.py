@@ -5,7 +5,7 @@ from bpy.types import Material
 
 from ..classes.material_instance import tpGxMaterialInstanceV2
 from ..classes.asset_package import tpXonAssetHeader
-from ..classes.tex_head import get_DXGI_format, get_alpha_mode, tpGxTexHead
+from ..classes.tex_head import get_dxgi_format, get_alpha_mode, tpGxTexHead
 from ..classes.pack import Pack, PackFile
 
 from .materials.master_rs_standard import master_rs_standard
@@ -54,9 +54,9 @@ def _find_texture_path(tex_name: str, textures_dir: str) -> str | None:
                 matches.append(os.path.join(root, file))
 
     # Prioritize PNG files
-    png_matches = [m for m in matches if m.lower().endswith('.png')]
-    if png_matches:
-        return png_matches[0]
+    priority_matches = [m for m in matches if m.lower().endswith('.dds')] # Temporarily prioritize DDS 
+    if priority_matches:
+        return priority_matches[0]
     elif matches:
         return matches[0]
     return None
@@ -77,6 +77,22 @@ def setup_material_texture_samplers(material: Material, material_asset: tpXonAss
         pack_path = _find_pack_path(tex_name, textures_dir, imports)
         if pack_path:
             sampler.pack_path = pack_path
+
+def setup_texture_sampler_dxgi_data(texture_packs: list[Pack]):
+    for pack in texture_packs:
+        for file in pack.files:
+            if file.content.asset_type != "tpGxTexHead":
+                continue
+            tex_basename = file.name.replace(".rtex", "")
+            tex_head: tpGxTexHead = file.content.asset_data
+            dxgi_format_string = tex_head.get_format_str()
+            has_multiple_mips = tex_head.mip_count > 1
+            for material in bpy.data.materials:
+                for sampler in material.replicant_texture_samplers:
+                    if tex_basename in sampler.texture_path:
+                        sampler.dxgi_format = dxgi_format_string
+                        sampler.mip_maps = has_multiple_mips
+
 
 def setup_custom_ui_values(material: Material, material_instance: tpGxMaterialInstanceV2):
     for constant_buffer in material_instance.constant_buffers:
@@ -133,7 +149,7 @@ def construct_materials(pack_dir: str, material_packs: list[Pack]):
             if handled:
                 continue
         except Exception as e:
-            log.w(f"Failed to construct shader for material: {material.name} ({e})")
+            log.e(f"Failed to construct shader for material: {material.name} ({e})")
 
         # Use default material generation
         default_material(textures_dir, material, material_instance)
@@ -228,7 +244,7 @@ def extract_textures(pack_dir: str, texture_packs: list[Pack]):
 
             # DDS_HEADER_DXT10
             # DXGI Format
-            format = get_DXGI_format(tex_head.surface_format)
+            format = get_dxgi_format(tex_head.surface_format)
             if format == None or format == "UNKNOWN":
                 log.w(f"Texture extraction failed! {file.name}")
                 failed_texture_files.append(file)
@@ -266,6 +282,7 @@ def extract_textures(pack_dir: str, texture_packs: list[Pack]):
 
     if extracted_textures_paths:
         from puredds import DDS
+        import imageio
         log.i(f"Converting {len(extracted_textures_paths)} textures...")
 
         failed_conversions = 0
@@ -281,7 +298,7 @@ def extract_textures(pack_dir: str, texture_packs: list[Pack]):
                     data = f.read()
                 dds = DDS.from_bytes(data)
                 image = dds.to_image()
-                image.save(out_path)
+                imageio.imwrite(out_path, image)
             except Exception as e:
                 log.e(f"Failed to convert {texture_path}! Error: {e}")
                 failed_conversions += 1

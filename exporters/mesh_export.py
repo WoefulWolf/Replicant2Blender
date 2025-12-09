@@ -8,7 +8,7 @@ from ..classes.mesh_data import BonesBuffer, ColorsBuffer, NormalsBuffer, Positi
 from ..classes.common import VertexBufferType
 from ..classes.mesh_head import MaterialGroup, tpGxMeshHead
 from ..classes.pack import Pack
-from ..util import log
+from ..util import get_collection_objects, log
 
 def export(operator):
     filepath: str = operator.filepath
@@ -120,13 +120,6 @@ def export(operator):
     log.d(f"Finished writing {filepath} in {end - write_start:.4f} seconds.")
     log.i(f"Total export time: {end - start:.4f} seconds!")
     return {'FINISHED'}
-
-def get_collection_objects(collections: list[Collection], collection_name: str) -> list[Object]:
-    for collection in collections:
-        if collection.name != collection_name:
-            continue
-        return [o for o in collection.objects if o.type == 'MESH']
-    return []
 
 @dataclass
 class VertexData:

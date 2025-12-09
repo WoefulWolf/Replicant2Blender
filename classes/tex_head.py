@@ -4,6 +4,7 @@ from typing import List, BinaryIO
 from io import BytesIO
 from enum import IntEnum
 
+from ..classes.binary_writer import BinaryWriter
 from .common import DataOffset
 
 
@@ -28,62 +29,55 @@ class XonSurfaceDXGIFormat(IntEnum):
     R32G32B32A32_UINT = 0x00030000
     BC6H_UF16 = 0x00031700
 
-def get_DXGI_format(surfaceFormat: XonSurfaceDXGIFormat) -> int | None:
-	if (surfaceFormat == XonSurfaceDXGIFormat.UNKNOWN):
-		return 0
-	
-	if (surfaceFormat == XonSurfaceDXGIFormat.R32G32B32A32_FLOAT):
-		return 2
-	
-	if (surfaceFormat == XonSurfaceDXGIFormat.R32G32B32A32_UINT):
-		return 3
-	
-	if (surfaceFormat == XonSurfaceDXGIFormat.R8G8B8A8_UNORM_STRAIGHT):
-		return 28
-	
-	if (surfaceFormat == XonSurfaceDXGIFormat.R8G8B8A8_UNORM):
-		return 28
-	
-	if (surfaceFormat == XonSurfaceDXGIFormat.R8G8B8A8_UNORM_SRGB):
-		return 29
-	
-	if (surfaceFormat == XonSurfaceDXGIFormat.R8_UNORM):
-		return 61
+def get_dxgi_format(surfaceFormat: XonSurfaceDXGIFormat) -> int | None:
+	"""Convert XonSurfaceDXGIFormat enum to DXGI format integer."""
+	mapping = {
+		XonSurfaceDXGIFormat.UNKNOWN: 0,
+		XonSurfaceDXGIFormat.R32G32B32A32_FLOAT: 2,
+		XonSurfaceDXGIFormat.R32G32B32A32_UINT: 3,
+		XonSurfaceDXGIFormat.R8G8B8A8_UNORM_STRAIGHT: 28,
+		XonSurfaceDXGIFormat.R8G8B8A8_UNORM: 28,
+		XonSurfaceDXGIFormat.R8G8B8A8_UNORM_SRGB: 29,
+		XonSurfaceDXGIFormat.R8_UNORM: 61,
+		XonSurfaceDXGIFormat.BC1_UNORM: 71,
+		XonSurfaceDXGIFormat.BC1_UNORM_VOLUME: 71,
+		XonSurfaceDXGIFormat.BC1_UNORM_SRGB: 72,
+		XonSurfaceDXGIFormat.BC2_UNORM: 74,
+		XonSurfaceDXGIFormat.BC2_UNORM_SRGB: 75,
+		XonSurfaceDXGIFormat.BC3_UNORM: 77,
+		XonSurfaceDXGIFormat.BC3_UNORM_SRGB: 78,
+		XonSurfaceDXGIFormat.BC4_UNORM: 80,
+		XonSurfaceDXGIFormat.BC5_UNORM: 83,
+		XonSurfaceDXGIFormat.BC6H_UF16: 95,
+		XonSurfaceDXGIFormat.BC7_UNORM: 98,
+		XonSurfaceDXGIFormat.BC7_UNORM_SRGB: 99,
+	}
 
-	if (surfaceFormat == XonSurfaceDXGIFormat.BC1_UNORM or surfaceFormat == XonSurfaceDXGIFormat.BC1_UNORM_VOLUME):
-		return 71
+	return mapping.get(surfaceFormat, None)
 
-	if (surfaceFormat == XonSurfaceDXGIFormat.BC1_UNORM_SRGB):
-		return 72
+def get_xon_surface_format(dxgi_format: int) -> XonSurfaceDXGIFormat:
+	"""Reverse mapping from DXGI format integer to XonSurfaceDXGIFormat enum."""
+	mapping = {
+		0: XonSurfaceDXGIFormat.UNKNOWN,
+		2: XonSurfaceDXGIFormat.R32G32B32A32_FLOAT,
+		3: XonSurfaceDXGIFormat.R32G32B32A32_UINT,
+		28: XonSurfaceDXGIFormat.R8G8B8A8_UNORM,
+		29: XonSurfaceDXGIFormat.R8G8B8A8_UNORM_SRGB,
+		61: XonSurfaceDXGIFormat.R8_UNORM,
+		71: XonSurfaceDXGIFormat.BC1_UNORM,
+		72: XonSurfaceDXGIFormat.BC1_UNORM_SRGB,
+		74: XonSurfaceDXGIFormat.BC2_UNORM,
+		75: XonSurfaceDXGIFormat.BC2_UNORM_SRGB,
+		77: XonSurfaceDXGIFormat.BC3_UNORM,
+		78: XonSurfaceDXGIFormat.BC3_UNORM_SRGB,
+		80: XonSurfaceDXGIFormat.BC4_UNORM,
+		83: XonSurfaceDXGIFormat.BC5_UNORM,
+		95: XonSurfaceDXGIFormat.BC6H_UF16,
+		98: XonSurfaceDXGIFormat.BC7_UNORM,
+		99: XonSurfaceDXGIFormat.BC7_UNORM_SRGB,
+	}
 
-	if (surfaceFormat == XonSurfaceDXGIFormat.BC2_UNORM):
-		return 74
-
-	if (surfaceFormat == XonSurfaceDXGIFormat.BC2_UNORM_SRGB):
-		return 75
-
-	if (surfaceFormat == XonSurfaceDXGIFormat.BC3_UNORM):
-		return 77
-
-	if (surfaceFormat == XonSurfaceDXGIFormat.BC3_UNORM_SRGB):
-		return 78
-	
-	if (surfaceFormat == XonSurfaceDXGIFormat.BC4_UNORM):
-		return 80
-
-	if (surfaceFormat == XonSurfaceDXGIFormat.BC5_UNORM):
-		return 83
-	
-	if (surfaceFormat == XonSurfaceDXGIFormat.BC6H_UF16):
-		return 95
-	
-	if (surfaceFormat == XonSurfaceDXGIFormat.BC7_UNORM):
-		return 98
-	
-	if (surfaceFormat == XonSurfaceDXGIFormat.BC7_UNORM_SRGB):
-		return 99
-
-	return None
+	return mapping.get(dxgi_format, XonSurfaceDXGIFormat.UNKNOWN)
 
 def get_alpha_mode(surfaceFormat: XonSurfaceDXGIFormat):
 	if (surfaceFormat == XonSurfaceDXGIFormat.R8G8B8A8_UNORM_STRAIGHT):
@@ -120,6 +114,19 @@ class Subresource:
             row_count=values[9]
         )
 
+    def write_to(self, writer) -> None:
+        writer.write_struct('<IIIIIIIIII',
+            self.offset,
+            self.unknown0,
+            self.row_pitch,
+            self.unknown1,
+            self.size,
+            self.unknown2,
+            self.width,
+            self.height,
+            self.depth,
+            self.row_count
+        )
 
 @dataclass
 class tpGxTexHead:
@@ -128,9 +135,26 @@ class tpGxTexHead:
     depth: int
     mip_count: int
     size: int
-    unknown_offset: DataOffset
+    internal_offset: DataOffset
     surface_format: XonSurfaceDXGIFormat
     subresources: List[Subresource]
+
+    def get_format_str(self) -> str:
+        from puredds import DXGI_FORMAT
+        return DXGI_FORMAT(get_dxgi_format(self.surface_format)).name
+
+    @classmethod
+    def new(cls) -> 'tpGxTexHead':
+        return cls(
+            width=0,
+            height=0,
+            depth=0,
+            mip_count=0,
+            size=0,
+            internal_offset=DataOffset(0, True),
+            surface_format=XonSurfaceDXGIFormat.UNKNOWN,
+            subresources=[]
+        )
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'tpGxTexHead':
@@ -138,7 +162,7 @@ class tpGxTexHead:
         width, height, depth, mip_count, size = struct.unpack('<IIIII', stream.read(20))
 
         # Parse unknown offset (bitfield)
-        unknown_offset = DataOffset.from_stream(stream)
+        internal_offset = DataOffset.from_stream(stream)
 
         # Parse surface format
         surface_format_value = struct.unpack('<I', stream.read(4))[0]
@@ -164,7 +188,7 @@ class tpGxTexHead:
             depth=depth,
             mip_count=mip_count,
             size=size,
-            unknown_offset=unknown_offset,
+            internal_offset=internal_offset,
             surface_format=surface_format,
             subresources=subresources
         )
@@ -172,3 +196,34 @@ class tpGxTexHead:
     @classmethod
     def from_bytes(cls, data: bytes) -> 'tpGxTexHead':
         return cls.from_stream(BytesIO(data))
+
+    def write_to(self, writer: BinaryWriter) -> None:
+        # Write header
+        writer.write_struct('<IIIII',
+            self.width,
+            self.height,
+            self.depth,
+            self.mip_count,
+            self.size
+        )
+
+        # Write internal offset
+        self.internal_offset.write_to(writer)
+
+        # Write surface format
+        writer.write_struct('<I', self.surface_format)
+
+        # Write subresources count
+        writer.write_struct('<I', len(self.subresources))
+
+        # Write offset to subresources (placeholder)
+        subresources_start_offset = writer.tell()
+        subresources_offset_placeholder = writer.write_placeholder('<I', subresources_start_offset)
+
+        writer.align_min_padding(8, 8)
+
+        # Write subresources
+        subresources_pos = writer.tell()
+        writer.patch_placeholder(subresources_offset_placeholder, subresources_pos)
+        for subresource in self.subresources:
+            subresource.write_to(writer)

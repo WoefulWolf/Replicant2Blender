@@ -4,7 +4,6 @@ from io import BytesIO
 
 from .tex_head import tpGxTexHead
 
-
 @dataclass
 class tpGxTexData:
     subresource_data: list[bytes]
@@ -26,3 +25,12 @@ class tpGxTexData:
     @classmethod
     def from_bytes(cls, data: bytes, tex_head: tpGxTexHead) -> 'tpGxTexData':
         return cls.from_stream(BytesIO(data), tex_head)
+
+    def write_to(self, writer, tex_head: tpGxTexHead) -> None:
+        asset_resource_start = writer.tell()
+
+        for i, data in enumerate(self.subresource_data):
+            # Update the subresource offset to current position
+            tex_head.subresources[i].offset = writer.tell() - asset_resource_start
+            # Write the raw texture data
+            writer.write(data)

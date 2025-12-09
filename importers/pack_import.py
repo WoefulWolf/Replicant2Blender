@@ -4,7 +4,7 @@ from ..classes.asset_package import tpXonAssetHeader
 from .levelData_import import importLevelData
 from ..classes.pack import *
 from .mesh_import import construct_meshes
-from .material_import import construct_materials, extract_textures
+from .material_import import construct_materials, extract_textures, setup_texture_sampler_dxgi_data
 from ..util import log
 
 imported_texture_packs = []
@@ -98,6 +98,8 @@ def main(pack_path: str, do_extract_textures: bool, do_construct_materials: bool
 
         if do_construct_materials:
             construct_materials(pack_directory, material_packs)
+            if len(texture_packs) > 0:
+                setup_texture_sampler_dxgi_data(texture_packs)
 
     if len(failed_texture_files) > 0:
         report_failed_textures(failed_texture_files)
