@@ -274,10 +274,11 @@ class ObjectIndicesBuffer:
 
         return cls(indices)
 
-    def write_to(self, writer) -> int:
+    def write_to(self, writer, object: Object) -> int:
         # Determine optimal index size based on max index value
         max_index = max(max(tri) for tri in self.indices) if self.indices else 0
         index_buffer_size = 2 if max_index < 65536 else 4
+        object.index_buffer_size = index_buffer_size
 
         if index_buffer_size == 2:
             for tri in self.indices:
@@ -289,8 +290,6 @@ class ObjectIndicesBuffer:
                 # Reverse back the winding order
                 v2, v1, v0 = tri
                 writer.write_struct('<III', v0, v1, v2)
-
-        return index_buffer_size
 
 
 @dataclass
@@ -346,8 +345,10 @@ class tpGxMeshData:
 
         # Write index data for each object (tightly packed, no alignment between them)
         index_buffers_start = writer.tell()
-        for obj_indices in self.object_indices:
-            obj_indices.write_to(writer)
-        index_buffers_end = writer.tell()
+        for i, obj_indices in enumerate(self.object_indices):
+            object = mesh_head.objects[i]
+            obj_indices.write_to(writer, object)
+        index_buffers_end = writer.tell()        
+
         mesh_head.index_buffers_offset.offset = index_buffers_start - base_offset
         mesh_head.total_index_buffers_size = index_buffers_end - index_buffers_start
