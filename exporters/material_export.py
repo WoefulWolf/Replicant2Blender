@@ -18,7 +18,7 @@ def export(operator):
     start = time.perf_counter()
 
     packs: list[tuple[str, Pack]] = []
-    materials = list(set([m for m in get_export_collections_materials() if m.replicant_master_material and m.replicant_export]))
+    materials = [m for m in get_export_collections_materials() if m.replicant_master_material and m.replicant_export]
 
     log.i(f"Found {len(materials)} material instances to export")
     for mat in materials:
@@ -34,6 +34,18 @@ def export(operator):
         material_instance = tpGxMaterialInstanceV2.new()
         material_instance.parent_asset_path_hash = fnv1(mat.replicant_master_material)
         material_instance.parent_asset_path = mat.replicant_master_material
+        material_instance.flags = (
+            not mat.replicant_flags.cast_shadows,
+            mat.replicant_flags.cast_shadows,
+            False,
+            False,
+            mat.replicant_flags.draw_backfaces,
+            mat.replicant_flags.draw_backfaces,
+            False,
+            False,
+            mat.replicant_flags.enable_alpha,
+            mat.replicant_flags.enable_alpha
+        )
 
         for buffer in mat.replicant_constant_buffers:
             constant_buffer = ConstantBuffer.new()

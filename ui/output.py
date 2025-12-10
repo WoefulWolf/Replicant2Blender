@@ -103,16 +103,56 @@ class OUTPUT_PT_replicant(bpy.types.Panel):
         layout = self.layout
         scene = context.scene
 
-        layout.label(text="Export Sources:", icon='EXPORT')
-        box = layout.box()
-        valid_collections = [col for col in scene.collection.children if any(obj.type == 'MESH' for obj in col.objects)]
-        if not valid_collections:
-            box.label(text="None found", icon='INFO')
-        else:
-            for collection in valid_collections:
-                row = box.row()
-                row.label(text=collection.name, icon='OUTLINER_COLLECTION')
-                row.prop(collection, "replicant_export", text="")
+        header = layout.row(align=True)
+        header.alignment = 'LEFT'
+        header.prop(context.scene, "replicant_show_export_sources",
+                    text="",
+                    icon='TRIA_DOWN' if context.scene.replicant_show_export_sources else 'TRIA_RIGHT',
+                    icon_only=True, emboss=False)
+        header.prop(context.scene, "replicant_show_export_sources",
+                    text="Export Sources:",
+                    icon='EXPORT',
+                    emboss=False, toggle=True)
+        if scene.replicant_show_export_sources:
+            box = layout.box()
+            valid_root_collections = [col for col in scene.collection.children if any(obj.type == 'MESH' for obj in col.all_objects)]
+            if not valid_root_collections:
+                box.label(text="None found", icon='INFO')
+            else:
+                for root_collection in valid_root_collections:
+                    root_box = box.box()
+                    row = root_box.row()
+                    split = row.split(factor=0.85)
+                    left = split.row()
+                    left.alignment = 'LEFT'
+                    left.prop(root_collection, "replicant_expanded",
+                            text="",
+                            icon='TRIA_DOWN' if root_collection.replicant_expanded else 'TRIA_RIGHT',
+                            icon_only=True, emboss=False)
+                    left.prop(root_collection, "replicant_expanded",
+                            text=root_collection.name,
+                            icon='FILE_FOLDER',
+                            emboss=False, toggle=True)
+                    right = split.row()
+                    right.alignment = 'RIGHT'
+                    right.prop(root_collection, "replicant_export", text="")
+                    if not root_collection.replicant_expanded:
+                        continue
+                    sub_box = root_box.box()
+                    sub_box.enabled = root_collection.replicant_export
+                    split = sub_box.split(factor=0.35, align=True)
+                    col1 = split.column()
+                    col1.label(text="Original Mesh PACK:", icon='FILE_ALIAS')
+                    col2 = split.column()
+                    col2.prop(root_collection, "replicant_original_mesh_pack", text="")
+                    valid_collections = [col for col in root_collection.children if any(obj.type == 'MESH' for obj in col.objects)]
+                    if not valid_collections:
+                        sub_box.label(text="None found", icon='INFO')
+                        continue
+                    for collection in  valid_collections:
+                        row = sub_box.row()
+                        row.label(text=collection.name, icon='FILE')
+                        row.prop(collection, "replicant_export", text="")
 
         layout.separator(type='LINE')
 
@@ -136,16 +176,10 @@ def mesh_export(layout: UILayout, context: Context):
     if not context.scene.replicant_show_mesh_export:
         return
 
-    split = box.split(factor=0.35, align=True)
-    col1 = split.column()
-    col1.label(text="Original Mesh PACK:", icon='FILE_ALIAS')
-    col2 = split.column()
-    col2.prop(context.scene, "replicant_original_mesh_pack", text="")
-
     # Export button
     row = box.row()
     row.scale_y = 2.0
-    op = row.operator("export.replicant_pack", text="Export Mesh PACK", icon='EXPORT')
+    op = row.operator("export.replicant_pack", text="Export Mesh PACK(s)", icon='EXPORT')
     op.type = 'MESH'
 
 def material_export(layout: UILayout, context: Context):
@@ -165,7 +199,7 @@ def material_export(layout: UILayout, context: Context):
         return
 
     mats_box = box.box()
-    materials = list(set([m for m in get_export_collections_materials() if m.replicant_master_material]))
+    materials = [m for m in get_export_collections_materials() if m.replicant_master_material]
     
     if len(materials) == 0:
         mats_box.label(text="None found", icon='INFO')
@@ -258,8 +292,12 @@ def texture_export(layout: UILayout, context: Context):
                         texture_paths.add(sampler.texture_path)
 
                     row = tex_box.row()
+                    exists= os.path.exists(sampler.texture_path)
+                    icon = 'NODE_SOCKET_TEXTURE' if exists else 'ERROR'
+                    row.alert = not exists
+
                     split = row.split(factor=0.5)
-                    path_op = split.operator("material.show_image_path", text=os.path.basename(sampler.texture_path), icon='NODE_SOCKET_TEXTURE')
+                    path_op = split.operator("material.show_image_path", text=os.path.basename(sampler.texture_path), icon=icon)
                     path_op.filepath = sampler.texture_path
 
                     if os.path.splitext(sampler.texture_path)[-1] == ".dds":
@@ -290,9 +328,13 @@ def register():
     bpy.utils.register_class(OUTPUT_OT_toggle_texture_pack_expand)
     bpy.utils.register_class(OUTPUT_OT_rename_texture_pack)
 
+    bpy.types.Scene.replicant_show_export_sources = bpy.props.BoolProperty(
+        name="Show Export Sources",
+        default=True
+    )
     bpy.types.Scene.replicant_show_mesh_export = bpy.props.BoolProperty(
         name="Show Mesh PACK Export",
-        default=True
+        default=False
     )
     bpy.types.Scene.replicant_show_material_export = bpy.props.BoolProperty(
         name="Show Material PACK Export",
@@ -303,11 +345,15 @@ def register():
         default=False
     )
 
-    bpy.types.Scene.replicant_original_mesh_pack = StringProperty(
+    bpy.types.Collection.replicant_original_mesh_pack = StringProperty(
         name="Original Mesh PACK",
         description="Path to the original mesh PACK file",
         default="",
         subtype='FILE_PATH'
+    )
+    bpy.types.Collection.replicant_expanded = BoolProperty(
+        name="Expanded",
+        default=False,
     )
 
     # Property to store which texture packs are expanded
@@ -331,7 +377,7 @@ def unregister():
     del bpy.types.Scene.replicant_show_mesh_export
     del bpy.types.Scene.replicant_show_material_export
     del bpy.types.Scene.replicant_show_texture_export
-    del bpy.types.Scene.replicant_original_mesh_pack
+    del bpy.types.Collection.replicant_original_mesh_pack
     del bpy.types.Scene.replicant_expanded_texture_packs
     del bpy.types.Collection.replicant_export
 

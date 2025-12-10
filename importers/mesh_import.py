@@ -1,3 +1,4 @@
+import os
 from bmesh.types import BMesh
 from bpy.types import VertexGroup
 
@@ -11,8 +12,15 @@ from ..util import log
 from mathutils import Vector, Matrix
 import bpy, bmesh, math
 
-def construct_meshes(pack: Pack):
+def construct_meshes(pack_path: str, pack: Pack):
     log.i("Generating Blender Objects...")
+
+    pack_filename = os.path.basename(pack_path)
+    pack_collection = bpy.data.collections.new(pack_filename)
+    pack_collection.replicant_original_mesh_pack = pack_path
+    pack_collection.replicant_export = True
+    
+    bpy.context.scene.collection.children.link(pack_collection)
 
     for i, file in enumerate(pack.files):
         if file.content is None or file.content.asset_type != "tpGxMeshHead":
@@ -21,7 +29,7 @@ def construct_meshes(pack: Pack):
 
         log.i(f"Generating object {mesh_file.name}")
         mesh_collection = bpy.data.collections.new(mesh_file.name)
-        bpy.context.scene.collection.children.link(mesh_collection)
+        pack_collection.children.link(mesh_collection)
         mesh_collection.replicant_export = True
 
         mesh_bxon = mesh_file.content

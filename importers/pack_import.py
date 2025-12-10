@@ -22,10 +22,7 @@ def main(pack_path: str, do_extract_textures: bool, do_construct_materials: bool
     log.i(f"Parsing Mesh PACK file... {pack_path}")
     pack = Pack.from_file(pack_path)
 
-    if any(file.content is not None and file.content.asset_type == 'tpGxMeshHead' for file in pack.files):
-        bpy.context.scene.replicant_original_mesh_pack = pack_path
-
-    construct_meshes(pack)
+    construct_meshes(pack_path, pack)
     # importLevelData(pack.levelData, addon_name)
 
     # Import materials + textures

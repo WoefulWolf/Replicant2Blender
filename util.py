@@ -150,9 +150,10 @@ def get_collection_materials(collections: list[Collection], collection_name: str
 	return [mat for o in get_collection_objects(collections, collection_name) for mat in o.data.materials if mat is not None]
 
 def get_export_collections_materials() -> list[Material]:
-	collections_to_export = [col for col in bpy.context.scene.collection.children if any(obj.type == 'MESH' for obj in col.objects) and col.replicant_export]
+	root_collections_to_export = [col for col in bpy.context.scene.collection.children if any(obj.type == 'MESH' for obj in col.all_objects) and col.replicant_export]
+	collections_to_export = [col for root_col in root_collections_to_export for col in root_col.children if any(obj.type == 'MESH' for obj in col.objects) and col.replicant_export]
 	collections_objects = [o for c in collections_to_export for o in c.objects if o.type == 'MESH']
-	return [mat for o in collections_objects for mat in o.data.materials if mat is not None]
+	return list(set([mat for o in collections_objects for mat in o.data.materials if mat is not None]))
 
 def label_multiline(context: Context, parent: UILayout, text: str):
 	import textwrap
@@ -162,3 +163,12 @@ def label_multiline(context: Context, parent: UILayout, text: str):
 	text_lines = wrapper.wrap(text=text)
 	for text_line in text_lines:
 		parent.label(text=text_line)
+
+def get_export_collections() -> dict[Collection, list[Collection]]:
+	out: dict[Collection, list[Collection]] = {}
+	root_collections_to_export = [col for col in bpy.context.scene.collection.children if any(obj.type == 'MESH' for obj in col.all_objects) and col.replicant_export]
+	for root_col in root_collections_to_export:
+		collections_to_export = [col for col in root_col.children if any(obj.type == 'MESH' for obj in col.objects) and col.replicant_export]
+		if collections_to_export:
+			out[root_col] = collections_to_export
+	return out

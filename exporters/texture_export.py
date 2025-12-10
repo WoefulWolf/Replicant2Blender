@@ -82,7 +82,7 @@ def export(operator):
             tex_head = tpGxTexHead.new()
             tex_head.width = dds.get_width()
             tex_head.height = dds.get_height()
-            tex_head.depth = dds.get_depth()
+            tex_head.depth = max(dds.get_depth(), 1)
             tex_head.mip_count = dds.get_mip_count()
             tex_head.size = dds.get_size()
             dxgi_format = dds.get_dxgi_format()

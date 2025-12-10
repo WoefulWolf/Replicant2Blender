@@ -95,6 +95,10 @@ def setup_texture_sampler_dxgi_data(texture_packs: list[Pack]):
 
 
 def setup_custom_ui_values(material: Material, material_instance: tpGxMaterialInstanceV2):
+    material.replicant_flags.cast_shadows = not material_instance.flags[0] and material_instance.flags[1]
+    material.replicant_flags.draw_backfaces = material_instance.flags[4] and material_instance.flags[5]
+    material.replicant_flags.enable_alpha = material_instance.flags[8] and material_instance.flags[9]
+
     for constant_buffer in material_instance.constant_buffers:
         cb = material.replicant_constant_buffers.add()
         cb.name = constant_buffer.name

@@ -3,6 +3,8 @@ from typing import Callable
 import bpy
 import os
 
+from bpy.types import UILayout
+
 dxgi_format_strings = ['UNKNOWN', 'R32G32B32A32_TYPELESS', 'R32G32B32A32_FLOAT', 'R32G32B32A32_UINT', 'R32G32B32A32_SINT', 'R32G32B32_TYPELESS', 'R32G32B32_FLOAT', 'R32G32B32_UINT', 'R32G32B32_SINT', 'R16G16B16A16_TYPELESS', 'R16G16B16A16_FLOAT', 'R16G16B16A16_UNORM', 'R16G16B16A16_UINT', 'R16G16B16A16_SNORM', 'R16G16B16A16_SINT', 'R32G32_TYPELESS', 'R32G32_FLOAT', 'R32G32_UINT', 'R32G32_SINT', 'R32G8X24_TYPELESS', 'D32_FLOAT_S8X24_UINT', 'R32_FLOAT_X8X24_TYPELESS', 'X32_TYPELESS_G8X24_UINT', 'R10G10B10A2_TYPELESS', 'R10G10B10A2_UNORM', 'R10G10B10A2_UINT', 'R11G11B10_FLOAT', 'R8G8B8A8_TYPELESS', 'R8G8B8A8_UNORM', 'R8G8B8A8_UNORM_SRGB', 'R8G8B8A8_UINT', 'R8G8B8A8_SNORM', 'R8G8B8A8_SINT', 'R16G16_TYPELESS', 'R16G16_FLOAT', 'R16G16_UNORM', 'R16G16_UINT', 'R16G16_SNORM', 'R16G16_SINT', 'R32_TYPELESS', 'D32_FLOAT', 'R32_FLOAT', 'R32_UINT', 'R32_SINT', 'R24G8_TYPELESS', 'D24_UNORM_S8_UINT', 'R24_UNORM_X8_TYPELESS', 'X24_TYPELESS_G8_UINT', 'R8G8_TYPELESS', 'R8G8_UNORM', 'R8G8_UINT', 'R8G8_SNORM', 'R8G8_SINT', 'R16_TYPELESS', 'R16_FLOAT', 'D16_UNORM', 'R16_UNORM', 'R16_UINT', 'R16_SNORM', 'R16_SINT', 'R8_TYPELESS', 'R8_UNORM', 'R8_UINT', 'R8_SNORM', 'R8_SINT', 'A8_UNORM', 'R1_UNORM', 'R9G9B9E5_SHAREDEXP', 'R8G8_B8G8_UNORM', 'G8R8_G8B8_UNORM', 'BC1_TYPELESS', 'BC1_UNORM', 'BC1_UNORM_SRGB', 'BC2_TYPELESS', 'BC2_UNORM', 'BC2_UNORM_SRGB', 'BC3_TYPELESS', 'BC3_UNORM', 'BC3_UNORM_SRGB', 'BC4_TYPELESS', 'BC4_UNORM', 'BC4_SNORM', 'BC5_TYPELESS', 'BC5_UNORM', 'BC5_SNORM', 'B5G6R5_UNORM', 'B5G5R5A1_UNORM', 'B8G8R8A8_UNORM', 'B8G8R8X8_UNORM', 'R10G10B10_XR_BIAS_A2_UNORM', 'B8G8R8A8_TYPELESS', 'B8G8R8A8_UNORM_SRGB', 'B8G8R8X8_TYPELESS', 'B8G8R8X8_UNORM_SRGB', 'BC6H_TYPELESS', 'BC6H_UF16', 'BC6H_SF16', 'BC7_TYPELESS', 'BC7_UNORM', 'BC7_UNORM_SRGB', 'AYUV', 'Y410', 'Y416', 'NV12', 'P010', 'P016', 'OPAQUE_420', 'YUY2', 'Y210', 'Y216', 'NV11', 'AI44', 'IA44', 'P8', 'A8P8', 'B4G4R4A4_UNORM']
 
 def get_dxgi_format_items():
@@ -348,6 +350,23 @@ def mip_maps_update(self, context):
                 sampler.mip_maps != new_value):
                 sampler.mip_maps = new_value
 
+class MaterialFlags(bpy.types.PropertyGroup):
+    cast_shadows: bpy.props.BoolProperty(
+        name="Cast Shadows",
+        description="Enable shadow casting on this material",
+        default=True,
+    )
+    draw_backfaces: bpy.props.BoolProperty(
+        name="Draw Backfaces",
+        description="Enables the drawing of backfaces",
+        default=False,
+    )
+    enable_alpha: bpy.props.BoolProperty(
+        name="Enable Alpha",
+        description="Enables texture alpha tests",
+        default=False,
+    )
+
 class TextureSampler(bpy.types.PropertyGroup):
     """Represents a texture sampler with a PACK and image path"""
     name: bpy.props.StringProperty(
@@ -444,7 +463,7 @@ class MATERIAL_PT_replicant(bpy.types.Panel):
     bl_context: str = "material"
 
     def draw(self, context):
-        layout = self.layout
+        layout: UILayout = self.layout
         obj = context.active_object
 
         if not obj or not obj.active_material:
@@ -456,9 +475,19 @@ class MATERIAL_PT_replicant(bpy.types.Panel):
         layout.prop(material, "replicant_mesh_import_path", text="Import PACK Path", icon='FILE_PARENT')
         layout.prop(material, "replicant_master_material", text="Master Material", icon='SHADING_TEXTURE')
 
+        material_flags(layout, context, material)
         texture_samplers(layout, context, material)
         constant_buffers(layout, context, material)
         texture_parameters(layout, context, material)
+
+def material_flags(layout, context, material):
+    box = layout.box()
+    box.label(text="Material Flags", icon='BOOKMARKS')
+    row = box.row(align=True)
+    row.prop(material.replicant_flags, "cast_shadows", icon='MATSHADERBALL')
+    row.prop(material.replicant_flags, "draw_backfaces", icon='FACESEL')
+    row.prop(material.replicant_flags, "enable_alpha", icon='IMAGE_ALPHA')
+    return
 
 def texture_samplers(layout, context, material):
     # Display the list of image texture node labels
@@ -496,6 +525,7 @@ def texture_samplers(layout, context, material):
             filepath = sampler.texture_path
             basename = os.path.basename(filepath) if filepath else "Unknown"
             exists= os.path.exists(filepath)
+            right_col.alert = not exists
             icon = 'NONE' if exists else 'ERROR'
 
             # Show basename as a button with full path tooltip
@@ -630,6 +660,7 @@ def texture_parameters(layout, context, material):
 
 def register():
     # Register PropertyGroups first
+    bpy.utils.register_class(MaterialFlags)
     bpy.utils.register_class(TextureParameter)
     bpy.utils.register_class(ConstantValue)
     bpy.utils.register_class(ConstantBuffer)
@@ -674,6 +705,9 @@ def register():
         default="material/master/master_rs_standard"
     )
 
+    # Add flags to material
+    bpy.types.Material.replicant_flags = bpy.props.PointerProperty(type=MaterialFlags)
+
     # Add textures to Material
     bpy.types.Material.replicant_texture_samplers = bpy.props.CollectionProperty(
         type=TextureSampler,
@@ -703,6 +737,7 @@ def unregister():
     del bpy.types.Material.replicant_texture_parameters
     del bpy.types.Material.replicant_constant_buffers
     del bpy.types.Material.replicant_texture_samplers
+    del bpy.types.Material.replicant_flags
     del bpy.types.Material.replicant_master_material
 
     # Remove scene properties
@@ -723,6 +758,7 @@ def unregister():
     bpy.utils.unregister_class(MATERIAL_OT_open_sampler_texture)
     bpy.utils.unregister_class(MATERIAL_OT_show_image_path)
 
+    bpy.utils.unregister_class(MaterialFlags)
     bpy.utils.unregister_class(TextureSampler)
     bpy.utils.unregister_class(ConstantBuffer)
     bpy.utils.unregister_class(ConstantValue)

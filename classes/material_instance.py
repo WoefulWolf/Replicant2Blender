@@ -272,8 +272,8 @@ class tpGxMaterialInstanceV2:
     constant_buffers: list[ConstantBuffer]
     texture_samplers: list[TextureSampler]
     texture_parameters: list[TextureParameter]
-    unknown_uint32s: list[int]
-    unknown_short: int
+    # disableShadowCasting, forceShadowCasting, unknown, unknown, drawBackfaces0, drawBackfaces1, unknown, unknown, enableAlpha0, enableAlpha1
+    flags: tuple[bool, bool, bool, bool, bool, bool, bool, bool, bool, bool]
 
     @classmethod
     def new(cls) -> 'tpGxMaterialInstanceV2':
@@ -283,9 +283,7 @@ class tpGxMaterialInstanceV2:
             constant_buffers=[],
             texture_samplers=[],
             texture_parameters=[],
-            # TODO: Figure these bytes out, they affect alpha
-            unknown_uint32s=[1, 257],
-            unknown_short=257
+            flags = (False, True, False, False, False, False, False, False, False, False)
         )
 
     @classmethod
@@ -313,8 +311,7 @@ class tpGxMaterialInstanceV2:
         texture_parameters_start_offset = stream.tell()
         offset_to_texture_parameters = struct.unpack('<I', stream.read(4))[0]
 
-        unknown_uint32s = list(struct.unpack('<II', stream.read(8)))
-        unknown_short = struct.unpack('<H', stream.read(2))[0]
+        flags = struct.unpack('<??????????', stream.read(10))
 
         # Parse constant buffers
         constant_buffers = []
@@ -340,8 +337,7 @@ class tpGxMaterialInstanceV2:
             constant_buffers=constant_buffers,
             texture_samplers=textures,
             texture_parameters=texture_parameters,
-            unknown_uint32s=unknown_uint32s,
-            unknown_short=unknown_short
+            flags=flags
         )
 
     def write_to(self, writer) -> None:
@@ -366,8 +362,7 @@ class tpGxMaterialInstanceV2:
         texture_parameters_placeholder = writer.write_placeholder('<I', texture_parameters_start_offset)
 
         # Write unknown values
-        writer.write_struct('<II', *self.unknown_uint32s)
-        writer.write_struct('<H', self.unknown_short)
+        writer.write_struct('<??????????', *self.flags)
 
         # Write parent asset path string
         writer.align_min_padding(8, 8)
