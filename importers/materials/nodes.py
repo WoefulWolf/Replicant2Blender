@@ -212,9 +212,13 @@ def invert_channel(channel: str="Green") -> NodeTree:
     channels = ["Red", "Green", "Blue"]
     if channel not in channels:
         return None
+
+    channel_index = channels.index(channel)
     
     unaffected_channels = channels
     unaffected_channels.remove(channel)
+
+    unaffected_channel_indices = [channels.index(chan) for chan in unaffected_channels]
 
     name = 'Invert ' + channel
     if name in bpy.data.node_groups:
@@ -256,15 +260,15 @@ def invert_channel(channel: str="Green") -> NodeTree:
     subtract_node.hide = True
     subtract_node.operation = 'SUBTRACT'
     subtract_node.inputs[0].default_value = 1.0
-    links.new(sep_col_node.outputs[channel], subtract_node.inputs[1])
+    links.new(sep_col_node.outputs[channel_index], subtract_node.inputs[1])
 
     # Combine again
     cmb_col_shader = nodes.new(type=comRGB_name)
     cmb_col_shader.location = grid_location(3, 0)
     cmb_col_shader.hide = True
-    for unaffected_channel in unaffected_channels:
-        links.new(sep_col_node.outputs[unaffected_channel], cmb_col_shader.inputs[unaffected_channel])
-    links.new(subtract_node.outputs[0], cmb_col_shader.inputs[channel])
+    for index in unaffected_channel_indices:
+        links.new(sep_col_node.outputs[index], cmb_col_shader.inputs[index])
+    links.new(subtract_node.outputs[0], cmb_col_shader.inputs[channel_index])
 	
     links.new(cmb_col_shader.outputs[comRGB_output], group_output.inputs['Color'])
 
