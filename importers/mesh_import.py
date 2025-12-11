@@ -37,7 +37,7 @@ def construct_meshes(pack_path: str, pack: Pack):
 
         # Create Armature + Bones
         if len(mesh_head.bone_poses) > 0:
-            amt_name = mesh_file.name + "_armature"
+            amt_name = f"{mesh_file.name}_armature"
             amt = bpy.data.armatures.new(amt_name)
             amt_obj = bpy.data.objects.new(amt_name, amt)
             mesh_collection.objects.link(amt_obj)

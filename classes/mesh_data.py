@@ -1,7 +1,10 @@
 import struct
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import BinaryIO, ClassVar
 from io import BytesIO
+
+from ..classes.binary_writer import BinaryWriter
 
 from ..util import log
 
@@ -11,7 +14,7 @@ from .common import VertexBufferType
 
 
 @dataclass
-class VertexDataBuffer:
+class VertexDataBuffer(ABC):
     _registry: ClassVar[dict[VertexBufferType, type['VertexDataBuffer']]] = {}
 
     @classmethod
@@ -36,6 +39,11 @@ class VertexDataBuffer:
         """Implemented in subclasses."""
         raise NotImplementedError
 
+    @abstractmethod
+    def write_to(self, writer: BinaryWriter, vertex_buffer_head: VertexBuffer) -> None:
+        """Implemented in subclasses."""
+        raise NotImplementedError
+
 @VertexDataBuffer.register
 @dataclass
 class UnknownsBuffer(VertexDataBuffer):
@@ -50,7 +58,7 @@ class UnknownsBuffer(VertexDataBuffer):
             unknowns.append(stream.read(vertex_buffer_size))
         return cls(unknowns=unknowns)
 
-    def write_to(self, writer) -> None:
+    def write_to(self, writer, vertex_buffer_head: VertexBuffer) -> None:
         for unknown in self.unknowns:
             writer.write(unknown)
 
@@ -69,7 +77,7 @@ class PositionsBuffer(VertexDataBuffer):
             positions.append((x, y, z))
         return cls(positions=positions)
 
-    def write_to(self, writer) -> None:
+    def write_to(self, writer, vertex_buffer_head: VertexBuffer) -> None:
         for pos in self.positions:
             writer.write_struct('<fff', *pos)
 
@@ -89,7 +97,7 @@ class NormalsBuffer(VertexDataBuffer):
             normals.append((x/127, y/127, z/127))
         return cls(normals=normals)
 
-    def write_to(self, writer) -> None:
+    def write_to(self, writer, vertex_buffer_head: VertexBuffer) -> None:
         for normal in self.normals:
             x, y, z = normal
             # Convert back from float to signed byte
@@ -110,7 +118,7 @@ class TangentsBuffer(VertexDataBuffer):
             tangents.append((x/127, y/127, z/127, -w/127))
         return cls(tangents=tangents)
 
-    def write_to(self, writer) -> None:
+    def write_to(self, writer, vertex_buffer_head: VertexBuffer) -> None:
         for tangent in self.tangents:
             x, y, z, w = tangent
             # Convert back from float to signed byte
@@ -131,7 +139,7 @@ class ColorsBuffer(VertexDataBuffer):
             colors.append((r/255, g/255, b/255, a/255))
         return cls(colors=colors)
 
-    def write_to(self, writer) -> None:
+    def write_to(self, writer, vertex_buffer_head: VertexBuffer) -> None:
         for color in self.colors:
             r, g, b, a = color
             # Convert back from float to unsigned byte
@@ -153,7 +161,7 @@ class UVsBuffer(VertexDataBuffer):
             uvs.append((u, 1-v))
         return cls(uvs=uvs)
 
-    def write_to(self, writer) -> None:
+    def write_to(self, writer, vertex_buffer_head: VertexBuffer) -> None:
         for uv in self.uvs:
             u, v = uv
             # Flip v back and write as half-float
@@ -175,7 +183,7 @@ class BonesBuffer(VertexDataBuffer):
             bones.append((bone1, bone2, bone3, bone4))
         return cls(bones=bones)
 
-    def write_to(self, writer) -> None:
+    def write_to(self, writer, vertex_buffer_head: VertexBuffer) -> None:
         for bone_indices in self.bones:
             writer.write_struct('<BBBB', *bone_indices)
 
@@ -202,17 +210,19 @@ class WeightsBuffer(VertexDataBuffer):
                 weights.append([weight1, weight2, weight3])
         return cls(weights=weights)
 
-    def write_to(self, writer) -> None:
+    def write_to(self, writer, vertex_buffer_head: VertexBuffer) -> None:
         # Determine buffer size based on max weights across all vertices
         max_weights = max(len(w) for w in self.weights) if self.weights else 0
 
         if max_weights == 4:
+            vertex_buffer_head.vertex_buffer_size = 12
             # Use 12-byte format (3 floats) for all vertices
             for weight_list in self.weights:
                 # Ensure we have at least 3 weights (pad with 0 if needed)
                 w = weight_list + [0.0] * (4 - len(weight_list))
                 writer.write_struct('<fff', w[0], w[1], w[2])
         else:
+            vertex_buffer_head.vertex_buffer_size = 8
             # Use 8-byte format (2 floats) for all vertices
             for weight_list in self.weights:
                 # Ensure we have at least 2 weights (pad with 0 if needed)
@@ -245,9 +255,9 @@ class ObjectVertexBuffers:
 
     def write_to(self, writer, base_offset: int, object: Object) -> None:
         for i, vb in enumerate(self.vertex_buffers):
-            vertex_buffer = object.vertex_buffers[i]
-            vertex_buffer.vertex_buffer_offset = writer.tell() - base_offset
-            vb.write_to(writer)
+            vertex_buffer_head = object.vertex_buffers[i]
+            vertex_buffer_head.vertex_buffer_offset = writer.tell() - base_offset
+            vb.write_to(writer, vertex_buffer_head)
             # Align after EACH vertex buffer (relative to base_offset)
             writer.align_relative_eager(base_offset, 4)
 

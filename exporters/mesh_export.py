@@ -21,8 +21,6 @@ def export(operator):
         operator.report({'ERROR'}, "No collections selected for export")
         return {'CANCELLED'}
 
-    print(export_collections)
-
     start = time.perf_counter()
 
     packs: list[tuple[str, Pack]] = []
@@ -179,6 +177,21 @@ class VertexData:
         self.bones = []
         self.weights = []
 
+        # Get armature for bone index mapping
+        armature = None
+        for modifier in obj.modifiers:
+            if modifier.type == 'ARMATURE':
+                armature = modifier.object
+                break
+
+        # Build vertex group name to bone index mapping
+        vg_to_bone_idx = {}
+        if armature:
+            bone_names = {bone.name: i for i, bone in enumerate(armature.data.bones)}
+            for vg in obj.vertex_groups:
+                if vg.name in bone_names:
+                    vg_to_bone_idx[vg.index] = bone_names[vg.name]
+
         # Dictionary to store data per vertex index
         vertex_data = {}
 
@@ -216,21 +229,27 @@ class VertexData:
                     vertex_data[vert_index]['vertex_colors'][color_layer.name] = tuple(color)
 
                 # Get bone weights (from vertex groups)
-                # Sort by bone index ascending and take top 4
-                bone_weights = [(g.group, g.weight) for g in vert.groups]
-                bone_weights.sort(key=lambda x: x[0])
+                # Map vertex group indices to armature bone indices
+                bone_weights: list[tuple[int, float]] = []
+                for g in vert.groups:
+                    if g.group in vg_to_bone_idx:
+                        bone_idx = vg_to_bone_idx[g.group]
+                        bone_weights.append((bone_idx, g.weight))
+
+                # Sort by weight descending and take top 4 strongest
+                bone_weights.sort(key=lambda x: x[1], reverse=True)
                 bone_weights = bone_weights[:4]  # Limit to 4 bones
 
                 # Bones always have exactly 4 ints, pad with zeros
-                vertex_bones = [0, 0, 0, 0]
-                vertex_weights = []
+                vertex_bones: list[int] = [0, 0, 0, 0]
+                vertex_weights: list[float] = []
 
                 for i, (bone_idx, weight) in enumerate(bone_weights):
                     vertex_bones[i] = bone_idx
                     vertex_weights.append(weight)
 
                 vertex_data[vert_index]['bones'] = vertex_bones
-                vertex_data[vert_index]['weights'] = vertex_weights
+                vertex_data[vert_index]['weights'] = [float(i)/sum(vertex_weights) for i in vertex_weights] # Normalize weights
 
         # Convert to sorted lists
         for vert_index in sorted(vertex_data.keys()):
