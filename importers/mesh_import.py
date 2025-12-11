@@ -2,6 +2,8 @@ import os
 from bmesh.types import BMesh
 from bpy.types import VertexGroup
 
+from ..classes.mesh_asset import tpGxMeshAssetV2
+from ..classes.asset_package import tpXonAssetHeader
 from ..classes.mesh_data import ColorsBuffer
 from ..classes.common import VertexBufferType
 from ..classes.mesh_data import BonesBuffer, NormalsBuffer, PositionsBuffer, UVsBuffer, WeightsBuffer, tpGxMeshData
@@ -31,6 +33,13 @@ def construct_meshes(pack_path: str, pack: Pack):
         mesh_collection = bpy.data.collections.new(mesh_file.name)
         pack_collection.children.link(mesh_collection)
         mesh_collection.replicant_export = True
+
+        asset_header: tpXonAssetHeader = pack.asset_packages[0].content.asset_data
+        mesh_asset: tpGxMeshAssetV2 = asset_header.assets[0].asset_content
+        for mesh in mesh_asset.meshes:
+            if mesh.name == mesh_file.name:
+                mesh_collection.replicant_lod_distance = mesh.lod_distance
+                break
 
         mesh_bxon = mesh_file.content
         mesh_head: tpGxMeshHead = mesh_bxon.asset_data

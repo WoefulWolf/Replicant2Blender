@@ -28,7 +28,7 @@ def export(operator):
         version=3,
         project_id=955984368,
         asset_type="tpXonAssetHeader",
-        asset_data=tpXonAssetHeader.new()
+        asset_data=tpXonAssetHeader()
     )
     asset_header_bxon_bytes = BinaryWriter()
     asset_header_bxon.write_to(asset_header_bxon_bytes)
@@ -56,7 +56,7 @@ def export(operator):
     materials = texture_packs[texture_pack]
     log.i(f"Found {len(materials)} materials referencing {texture_pack} with textures to export")
 
-    pack = Pack.new()
+    pack = Pack()
     pack.asset_packages.append(asset_package)
 
     texture_paths = set()
@@ -79,7 +79,7 @@ def export(operator):
                 operator.report({'ERROR'}, f"Failed to parse DDS data file {sampler.texture_path}, is it a valid DDS?")
                 return {'CANCELLED'}
 
-            tex_head = tpGxTexHead.new()
+            tex_head = tpGxTexHead()
             tex_head.width = dds.get_width()
             tex_head.height = dds.get_height()
             tex_head.depth = max(dds.get_depth(), 1)

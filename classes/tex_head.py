@@ -1,5 +1,5 @@
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, BinaryIO
 from io import BytesIO
 from enum import IntEnum
@@ -130,31 +130,18 @@ class Subresource:
 
 @dataclass
 class tpGxTexHead:
-    width: int
-    height: int
-    depth: int
-    mip_count: int
-    size: int
-    internal_offset: DataOffset
-    surface_format: XonSurfaceDXGIFormat
-    subresources: List[Subresource]
+    width: int = field(default=0)
+    height: int = field(default=0)
+    depth: int = field(default=0)
+    mip_count: int = field(default=0)
+    size: int = field(default=0)
+    internal_offset: DataOffset = field(default_factory=lambda: DataOffset(0, True))
+    surface_format: XonSurfaceDXGIFormat = field(default=XonSurfaceDXGIFormat.UNKNOWN)
+    subresources: List[Subresource] = field(default_factory=list)
 
     def get_format_str(self) -> str:
         from puredds import DXGI_FORMAT
         return DXGI_FORMAT(get_dxgi_format(self.surface_format)).name
-
-    @classmethod
-    def new(cls) -> 'tpGxTexHead':
-        return cls(
-            width=0,
-            height=0,
-            depth=0,
-            mip_count=0,
-            size=0,
-            internal_offset=DataOffset(0, True),
-            surface_format=XonSurfaceDXGIFormat.UNKNOWN,
-            subresources=[]
-        )
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'tpGxTexHead':

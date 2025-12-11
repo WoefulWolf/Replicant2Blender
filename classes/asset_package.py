@@ -1,9 +1,10 @@
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, BinaryIO
 from io import BytesIO
 from enum import IntEnum
 
+from ..classes.mesh_asset import tpGxMeshAssetV2
 from ..classes.material_instance import tpGxMaterialInstanceV2
 
 from .common import read_string, align_relative, Import
@@ -11,7 +12,15 @@ from .common import read_string, align_relative, Import
 
 class AssetTypeHash(IntEnum):
     tpGxMaterialInstanceV2 = 0x3ABE8760
-
+    tpGxMeshAssetV2 = 0x8DDAB24E
+    
+    @staticmethod
+    def is_valid_type(value: int) -> bool:
+        try:
+            AssetTypeHash(value)
+            return True
+        except ValueError:
+            return False
 
 @dataclass
 class Asset:
@@ -27,20 +36,26 @@ class Asset:
         stream.seek(asset_start_offset + offset_to_asset)
         asset_type_hash = struct.unpack('<I', stream.read(4))[0]
 
-        # Only tpGxMaterialInstanceV2 is fully implemented
-        if asset_type_hash != AssetTypeHash.tpGxMaterialInstanceV2:
+        if asset_type_hash == AssetTypeHash.tpGxMeshAssetV2:
+            mesh_asset = tpGxMeshAssetV2.from_stream(stream)
             stream.seek(asset_return_pos)
             return cls(
                 asset_type_hash=asset_type_hash,
-                asset_content=None
+                asset_content=mesh_asset
+            )
+        elif asset_type_hash == AssetTypeHash.tpGxMaterialInstanceV2:
+            material_instance = tpGxMaterialInstanceV2.from_stream(stream)
+            stream.seek(asset_return_pos)
+
+            return cls(
+                asset_type_hash=asset_type_hash,
+                asset_content=material_instance
             )
 
-        material_instance = tpGxMaterialInstanceV2.from_stream(stream)
         stream.seek(asset_return_pos)
-
         return cls(
             asset_type_hash=asset_type_hash,
-            asset_content=material_instance
+            asset_content=None
         )
 
     @staticmethod
@@ -69,15 +84,8 @@ class Asset:
 
 @dataclass
 class tpXonAssetHeader:
-    assets: list[Asset]
-    imports: list[Import]
-
-    @classmethod
-    def new(cls) -> 'tpXonAssetHeader':
-        return cls(
-            assets=[],
-            imports=[]
-        )
+    assets: list[Asset] = field(default_factory=list)
+    imports: list[Import] = field(default_factory=list)
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'tpXonAssetHeader':

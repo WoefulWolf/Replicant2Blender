@@ -1,7 +1,7 @@
 from decimal import Context
 import os
 import bpy
-from bpy.props import StringProperty, BoolProperty, CollectionProperty, PointerProperty
+from bpy.props import FloatProperty, StringProperty, BoolProperty, CollectionProperty, PointerProperty
 from bpy.types import Material, UILayout
 
 from ..util import get_export_collections_materials
@@ -150,8 +150,12 @@ class OUTPUT_PT_replicant(bpy.types.Panel):
                         sub_box.label(text="None found", icon='INFO')
                         continue
                     for collection in  valid_collections:
-                        row = sub_box.row()
-                        row.label(text=collection.name, icon='FILE')
+                        split = sub_box.split(factor=0.35, align=True)
+                        col1 = split.column()
+                        col1.label(text=collection.name, icon='FILE')
+                        col2 = split.column()
+                        row = col2.row()
+                        row.prop(collection, "replicant_lod_distance")
                         row.prop(collection, "replicant_export", text="")
 
         layout.separator(type='LINE')
@@ -350,6 +354,11 @@ def register():
         description="Path to the original mesh PACK file",
         default="",
         subtype='FILE_PATH'
+    )
+    bpy.types.Collection.replicant_lod_distance = FloatProperty(
+        name="LOD Distance",
+        description="The LOD distance of this mesh file",
+        default=0,
     )
     bpy.types.Collection.replicant_expanded = BoolProperty(
         name="Expanded",

@@ -1,5 +1,5 @@
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import BinaryIO
 from io import BytesIO
 
@@ -81,7 +81,7 @@ class PackAssetPackage:
         writer.patch_placeholder(content_start_placeholder, content_pos)
 
         if self.content:
-            if self.content.asset_type == "tpXonAssetHeader" and  all(a.asset_type_hash == AssetTypeHash.tpGxMaterialInstanceV2 for a in self.content.asset_data.assets):
+            if self.content.asset_type == "tpXonAssetHeader" and all(AssetTypeHash.is_valid_type(a.asset_type_hash) for a in self.content.asset_data.assets):
                 self.content.write_to(writer)
                 writer.align_min_padding(8, 8)
             else:
@@ -197,33 +197,17 @@ class PackFile:
 
 @dataclass
 class PackHeader:
-    magic: bytes
-    version: int
-    pack_total_size: int
-    pack_serialized_size: int
-    pack_files_data_size: int
-    imports_count: int
-    imports_offset: int
-    asset_packages_count: int
-    asset_packages_offset: int
-    files_count: int
-    files_offset: int
-
-    @classmethod
-    def new(cls) -> 'PackHeader':
-        return cls(
-            magic=b'PACK',
-            version=4,
-            pack_total_size=0,
-            pack_serialized_size=0,
-            pack_files_data_size=0,
-            imports_count=0,
-            imports_offset=0,
-            asset_packages_count=0,
-            asset_packages_offset=0,
-            files_count=0,
-            files_offset=0
-        )
+    magic: bytes = field(default=b'PACK')
+    version: int = field(default=4)
+    pack_total_size: int = field(default=0)
+    pack_serialized_size: int = field(default=0)
+    pack_files_data_size: int = field(default=0)
+    imports_count: int = field(default=0)
+    imports_offset: int = field(default=0)
+    asset_packages_count: int = field(default=0)
+    asset_packages_offset: int = field(default=0)
+    files_count: int = field(default=0)
+    files_offset: int = field(default=0)
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'PackHeader':
@@ -259,34 +243,18 @@ class PackHeader:
 @dataclass
 class PackFileData:
     file_index: int
-    mesh_data: tpGxMeshData | None  # tpGxMeshData
-    tex_data: tpGxTexData | None   # tpGxTexData
-    raw_data: bytes | None  # Raw bytes for non-mesh files
-
-    def __init__(self, file_index: int, mesh_data=None, tex_data=None, raw_data=None):
-        self.file_index = file_index
-        self.mesh_data = mesh_data
-        self.tex_data = tex_data
-        self.raw_data = raw_data
+    mesh_data: tpGxMeshData | None = field(default=None)
+    tex_data: tpGxTexData | None = field(default=None)
+    raw_data: bytes | None = field(default=None)
 
 
 @dataclass
 class Pack:
-    header: PackHeader
-    imports: list[Import]
-    asset_packages: list[PackAssetPackage]
-    files: list[PackFile]
-    files_data: list[PackFileData]
-
-    @classmethod
-    def new(cls) -> 'Pack':
-        return cls(
-            header=PackHeader.new(),
-            imports=[],
-            asset_packages=[],
-            files=[],
-            files_data=[]
-        )
+    header: PackHeader = field(default_factory=PackHeader)
+    imports: list[Import] = field(default_factory=list)
+    asset_packages: list[PackAssetPackage] = field(default_factory=list)
+    files: list[PackFile] = field(default_factory=list)
+    files_data: list[PackFileData] = field(default_factory=list)
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'Pack':

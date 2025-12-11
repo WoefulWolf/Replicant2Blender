@@ -1,7 +1,8 @@
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import BinaryIO
 
+from ..util import fnv1
 from ..classes.common import align_relative, read_string
 
 @dataclass
@@ -72,19 +73,13 @@ class Constant:
 
 @dataclass
 class ConstantBuffer:
-    name_hash: int
     name: str
-    unknown_uint32_0: int
-    constants: list[Constant]
+    name_hash: int = field(init=False)
+    unknown_uint32_0: int = field(default=0)
+    constants: list[Constant] = field(default_factory=list)
 
-    @classmethod
-    def new(cls) -> 'ConstantBuffer':
-        return cls(
-            name_hash=0,
-            name="",
-            unknown_uint32_0=0,
-            constants=[]
-        )
+    def __post_init__(self) -> None:
+        self.name_hash = fnv1(self.name)
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'ConstantBuffer':
@@ -109,12 +104,13 @@ class ConstantBuffer:
             constants.append(Constant.from_stream(stream))
         stream.seek(return_pos)
 
-        return cls(
-            name_hash=cb_name_hash,
-            name=name,
-            unknown_uint32_0=unknown_uint32_0,
-            constants=constants
-        )
+        # Bypass __post_init__ to use parsed name_hash directly
+        instance = cls.__new__(cls)
+        instance.name_hash = cb_name_hash
+        instance.name = name
+        instance.unknown_uint32_0 = unknown_uint32_0
+        instance.constants = constants
+        return instance
 
     @staticmethod
     def write_list(writer, constant_buffers: list['ConstantBuffer']) -> None:
@@ -267,24 +263,16 @@ class TextureParameter:
 
 @dataclass
 class tpGxMaterialInstanceV2:
-    parent_asset_path_hash: int
     parent_asset_path: str
-    constant_buffers: list[ConstantBuffer]
-    texture_samplers: list[TextureSampler]
-    texture_parameters: list[TextureParameter]
+    parent_asset_path_hash: int = field(init=False)
+    constant_buffers: list[ConstantBuffer] = field(default_factory=list)
+    texture_samplers: list[TextureSampler] = field(default_factory=list)
+    texture_parameters: list[TextureParameter] = field(default_factory=list)
     # disableShadowCasting, forceShadowCasting, unknown, unknown, drawBackfaces0, drawBackfaces1, unknown, unknown, enableAlpha0, enableAlpha1
-    flags: tuple[bool, bool, bool, bool, bool, bool, bool, bool, bool, bool]
+    flags: tuple[bool, bool, bool, bool, bool, bool, bool, bool, bool, bool] = field(default=(False, True, False, False, False, False, False, False, False, False))
 
-    @classmethod
-    def new(cls) -> 'tpGxMaterialInstanceV2':
-        return cls(
-            parent_asset_path_hash=0,
-            parent_asset_path="",
-            constant_buffers=[],
-            texture_samplers=[],
-            texture_parameters=[],
-            flags = (False, True, False, False, False, False, False, False, False, False)
-        )
+    def __post_init__(self) -> None:
+        self.parent_asset_path_hash = fnv1(self.parent_asset_path)
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'tpGxMaterialInstanceV2':
@@ -331,14 +319,15 @@ class tpGxMaterialInstanceV2:
         for _ in range(texture_parameters_count):
             texture_parameters.append(TextureParameter.from_stream(stream))
 
-        return cls(
-            parent_asset_path_hash=parent_asset_path_hash,
-            parent_asset_path=parent_asset_path,
-            constant_buffers=constant_buffers,
-            texture_samplers=textures,
-            texture_parameters=texture_parameters,
-            flags=flags
-        )
+        # Bypass __post_init__ to use parsed parent_asset_path_hash directly
+        instance = cls.__new__(cls)
+        instance.parent_asset_path_hash = parent_asset_path_hash
+        instance.parent_asset_path = parent_asset_path
+        instance.constant_buffers = constant_buffers
+        instance.texture_samplers = textures
+        instance.texture_parameters = texture_parameters
+        instance.flags = flags
+        return instance
 
     def write_to(self, writer) -> None:
         # Write parent asset path hash and placeholder

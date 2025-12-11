@@ -1,7 +1,9 @@
 from enum import IntEnum
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import BinaryIO
+
+from ..util import fnv1
 
 def read_string(stream: BinaryIO) -> str:
     chars = []
@@ -14,9 +16,12 @@ def read_string(stream: BinaryIO) -> str:
 
 @dataclass
 class Import:
-    path_hash: int
     path: str
-    unknown0: int
+    path_hash: int = field(init=False)
+    unknown0: int = field(default=0)
+
+    def __post_init__(self) -> None:
+        self.path_hash = fnv1(self.path)
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'Import':
@@ -29,11 +34,12 @@ class Import:
         path = read_string(stream)
         stream.seek(return_pos)
 
-        return cls(
-            path_hash=path_hash,
-            path=path,
-            unknown0=unknown0
-        )
+        # Bypass __post_init__ to use parsed path_hash directly
+        instance = cls.__new__(cls)
+        instance.path_hash = path_hash
+        instance.path = path
+        instance.unknown0 = unknown0
+        return instance
 
     @staticmethod
     def write_list(writer, imports: list['Import']) -> None:

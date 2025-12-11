@@ -5,11 +5,15 @@ import bpy, time
 from dataclasses import dataclass, field
 from bpy.types import Collection, Material, Mesh, Object
 
+from ..classes.mesh_asset import ImportedMaterial, tpGxMeshAssetV2
+from ..classes.mesh_asset import MeshMaterial as MeshAssetMaterial
+from ..classes.mesh_asset import Mesh as MeshAssetMesh
 from ..classes.mesh_data import BonesBuffer, ColorsBuffer, NormalsBuffer, PositionsBuffer, UVsBuffer, WeightsBuffer
 from ..classes.common import Import, VertexBufferType
 from ..classes.mesh_head import MaterialGroup, tpGxMeshHead
-from ..classes.mesh_head import Material as MeshMaterial
+from ..classes.mesh_head import Material as MeshHeadMaterial
 from ..classes.pack import Pack, PackFile
+from ..classes.asset_package import tpXonAssetHeader
 from ..util import fnv1, get_collection_objects, get_export_collections, log
 
 def export(operator):
@@ -36,8 +40,15 @@ def export(operator):
         filepath = os.path.join(directory, root.name)
 
         log.i(f"Opening original PACK: {original_pack_path}")
+
         pack = Pack.from_file(original_pack_path)
         pack.imports.clear()
+
+        asset_header: tpXonAssetHeader = pack.asset_packages[0].content.asset_data
+        mesh_asset: tpGxMeshAssetV2 = asset_header.assets[0].asset_content
+        mesh_asset.meshes.clear()
+        mesh_asset.imported_materials.clear()
+
         for file_data in pack.files_data:
             file: PackFile = pack.files[file_data.file_index]
             mesh_head: tpGxMeshHead = file.content.asset_data
@@ -48,13 +59,15 @@ def export(operator):
             b_objs = get_collection_objects(collections, file.name)
             log.d(f"Found {len(b_objs)} objects to export to {file.name}")
 
+            update_mesh_asset(mesh_asset, file.name, b_objs, collections)
+
             # Collect all necessary data
             mesh_head.materials.clear()
             materials: list[str] = []
             for b_obj in b_objs:
                 for material in b_obj.data.materials:
                     materials.append(material.name)
-                    mesh_head.materials.append(MeshMaterial(
+                    mesh_head.materials.append(MeshHeadMaterial(
                         name=material.name,
                         unknown_uint32=4,
                         unknown_byte=0
@@ -340,11 +353,33 @@ def get_loops_and_material_groups(obj: Object, obj_index: int, materials: list[s
     return loops, material_groups
 
 def update_imports(pack: Pack, obj: Object):
-    import_paths = [p.path for p in pack.imports]
+    asset_header: tpXonAssetHeader = pack.asset_packages[0].content.asset_data
+    pack_import_paths = [p.path for p in pack.imports]
+    asset_import_paths = [p.path for p in asset_header.imports]
     for material in obj.data.materials:
-        if material.replicant_mesh_import_path != "" and material.replicant_mesh_import_path not in import_paths:
-            pack.imports.append(Import(
-                path_hash=fnv1(material.replicant_mesh_import_path),
-                path=material.replicant_mesh_import_path,
-                unknown0=0
+        if material.replicant_mesh_import_path != "":
+            new_import = Import(path=material.replicant_mesh_import_path,)
+            if material.replicant_mesh_import_path not in asset_import_paths:
+                asset_header.imports.append(new_import)
+            if material.replicant_mesh_import_path not in pack_import_paths:
+                pack.imports.append(new_import)
+            
+def update_mesh_asset(mesh_asset: tpGxMeshAssetV2, name: str, objects: list[Object], collections: list[Collection]):
+    imported_materials = [(m.name, m.path) for m in mesh_asset.imported_materials]
+
+    mesh = MeshAssetMesh(name)
+    for obj in objects:
+        for mat in obj.data.materials:
+            mesh.materials.append(MeshAssetMaterial(mat.name))
+            if (mat.name, mat.replicant_mesh_import_path) in imported_materials:
+                continue
+            mesh_asset.imported_materials.append(ImportedMaterial(
+                mat.name,
+                mat.replicant_mesh_import_path
             ))
+    for col in collections:
+        if name == col.name:
+            mesh.lod_distance = col.replicant_lod_distance
+            break
+    mesh_asset.meshes.append(mesh)
+    return

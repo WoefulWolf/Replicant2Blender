@@ -31,9 +31,7 @@ def export(operator):
             import_paths.add(sampler.pack_path)
         import_paths.add(mat.replicant_master_material)
 
-        material_instance = tpGxMaterialInstanceV2.new()
-        material_instance.parent_asset_path_hash = fnv1(mat.replicant_master_material)
-        material_instance.parent_asset_path = mat.replicant_master_material
+        material_instance = tpGxMaterialInstanceV2(mat.replicant_master_material)
         material_instance.flags = (
             not mat.replicant_flags.cast_shadows,
             mat.replicant_flags.cast_shadows,
@@ -48,9 +46,7 @@ def export(operator):
         )
 
         for buffer in mat.replicant_constant_buffers:
-            constant_buffer = ConstantBuffer.new()
-            constant_buffer.name_hash = fnv1(buffer.name)
-            constant_buffer.name = buffer.name
+            constant_buffer = ConstantBuffer(buffer.name)
             for const in buffer.constants:
                 constant = Constant(
                     name_hash=fnv1(const.name),
@@ -93,14 +89,10 @@ def export(operator):
             asset_content=material_instance
         )
 
-        asset_header = tpXonAssetHeader.new()
+        asset_header = tpXonAssetHeader()
         asset_header.assets.append(asset)
         for path in import_paths:
-            asset_header.imports.append(Import(
-                path_hash=fnv1(path),
-                path=path,
-                unknown0=0
-            ))
+            asset_header.imports.append(Import(path))
 
         asset_header_bxon = BXON(
             magic=b'BXON',
@@ -119,13 +111,9 @@ def export(operator):
             raw_content_bytes=asset_header_bxon_bytes.get_bytes()
         )
 
-        pack = Pack.new()
+        pack = Pack()
         for path in import_paths:
-            pack.imports.append(Import(
-                path_hash=fnv1(path),
-                path=path,
-                unknown0=0
-            ))
+            pack.imports.append(Import(path))
         pack.asset_packages.append(asset_package)
         packs.append((filepath, pack))
         log.d(f"Generated material instance data for {filename}")
