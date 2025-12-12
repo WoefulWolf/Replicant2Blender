@@ -49,9 +49,25 @@ class EXPORT_OT_replicant_pack(Operator, ExportHelper):
         if self.type == 'MATERIAL':
             label_multiline(context, layout, "Please select a directory where the following material PACK(s) will be written to:")
             box = layout.box()
+            listed_filenames = set()
             materials = [m for m in get_export_collections_materials() if m.replicant_master_material and m.replicant_export]
             for mat in materials:
-                box.label(text=f"mtl_{mat.name}", icon='NODE_SOCKET_SHADER')
+                filename = os.path.basename(mat.replicant_pack_path)
+                row = box.row()
+                duplicate = False
+                icon = 'NODE_SOCKET_SHADER'
+                if filename in listed_filenames:
+                    duplicate = True
+                    row.alert = True
+                    icon = 'ERROR'
+                listed_filenames.add(filename)
+                row.label(text=f"{filename}", icon=icon)
+                if duplicate:
+                    error_row = box.row()
+                    error_row.alert = True
+                    error_row.label(text="", icon='FILE_PARENT')
+                    error_box = error_row.box()
+                    error_box.label(text="Duplicate material PACK name, will overwrite another during export! Did you remember to change a custom material's PACK path?")
         elif self.type == 'TEXTURE':
             label_multiline(context, layout, "Please specify a file which the following texture PACK will be written to:")
             box = layout.box()

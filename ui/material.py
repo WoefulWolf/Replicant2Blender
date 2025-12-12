@@ -472,7 +472,7 @@ class MATERIAL_PT_replicant(bpy.types.Panel):
 
         material = obj.active_material
 
-        layout.prop(material, "replicant_mesh_import_path", text="Import PACK Path", icon='FILE_PARENT')
+        layout.prop(material, "replicant_pack_path", text="Import PACK Path", icon='FILE_PARENT')
         layout.prop(material, "replicant_master_material", text="Master Material", icon='SHADING_TEXTURE')
 
         material_flags(layout, context, material)
@@ -693,9 +693,9 @@ def register():
         default=False
     )
 
-    # Add mesh import material path
-    bpy.types.Material.replicant_mesh_import_path = bpy.props.StringProperty(
-        name="Mesh Import Path",
+    # Material pack pack
+    bpy.types.Material.replicant_pack_path = bpy.props.StringProperty(
+        name="Material Pack Path",
         default=""
     )
 

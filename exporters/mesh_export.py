@@ -357,11 +357,11 @@ def update_imports(pack: Pack, obj: Object):
     pack_import_paths = [p.path for p in pack.imports]
     asset_import_paths = [p.path for p in asset_header.imports]
     for material in obj.data.materials:
-        if material.replicant_mesh_import_path != "":
-            new_import = Import(path=material.replicant_mesh_import_path,)
-            if material.replicant_mesh_import_path not in asset_import_paths:
+        if material.replicant_pack_path != "":
+            new_import = Import(path=material.replicant_pack_path,)
+            if material.replicant_pack_path not in asset_import_paths:
                 asset_header.imports.append(new_import)
-            if material.replicant_mesh_import_path not in pack_import_paths:
+            if material.replicant_pack_path not in pack_import_paths:
                 pack.imports.append(new_import)
             
 def update_mesh_asset(mesh_asset: tpGxMeshAssetV2, name: str, objects: list[Object], collections: list[Collection]):
@@ -371,11 +371,11 @@ def update_mesh_asset(mesh_asset: tpGxMeshAssetV2, name: str, objects: list[Obje
     for obj in objects:
         for mat in obj.data.materials:
             mesh.materials.append(MeshAssetMaterial(mat.name))
-            if (mat.name, mat.replicant_mesh_import_path) in imported_materials:
+            if (mat.name, mat.replicant_pack_path) in imported_materials:
                 continue
             mesh_asset.imported_materials.append(ImportedMaterial(
                 mat.name,
-                mat.replicant_mesh_import_path
+                mat.replicant_pack_path
             ))
     for col in collections:
         if name == col.name:

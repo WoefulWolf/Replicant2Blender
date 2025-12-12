@@ -216,7 +216,7 @@ def construct_meshes(pack_path: str, pack: Pack):
 
                 for import_path in pack.imports:
                     if b_material.name in import_path.path:
-                        b_material.replicant_mesh_import_path = import_path.path
+                        b_material.replicant_pack_path = import_path.path
                         break
 
                 # Directly index faces by their position in the bmesh

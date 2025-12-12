@@ -150,10 +150,7 @@ def get_collection_materials(collections: list[Collection], collection_name: str
 	return [mat for o in get_collection_objects(collections, collection_name) for mat in o.data.materials if mat is not None]
 
 def get_export_collections_materials() -> list[Material]:
-	root_collections_to_export = [col for col in bpy.context.scene.collection.children if any(obj.type == 'MESH' for obj in col.all_objects) and col.replicant_export]
-	collections_to_export = [col for root_col in root_collections_to_export for col in root_col.children if any(obj.type == 'MESH' for obj in col.objects) and col.replicant_export]
-	collections_objects = [o for c in collections_to_export for o in c.objects if o.type == 'MESH']
-	return list(set([mat for o in collections_objects for mat in o.data.materials if mat is not None]))
+	return list(dict.fromkeys([mat for cols in get_export_collections().values() for col in cols for o in col.objects if o.type == 'MESH' for mat in o.data.materials if mat is not None]))
 
 def label_multiline(context: Context, parent: UILayout, text: str):
 	import textwrap

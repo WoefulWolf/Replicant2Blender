@@ -22,7 +22,7 @@ def export(operator):
 
     log.i(f"Found {len(materials)} material instances to export")
     for mat in materials:
-        filename = f"mtl_{mat.name}"
+        filename = os.path.basename(mat.replicant_pack_path)
         filepath = os.path.join(directory, filename)
         
         import_paths: set[str] = set()

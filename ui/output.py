@@ -4,7 +4,7 @@ import bpy
 from bpy.props import FloatProperty, StringProperty, BoolProperty, CollectionProperty, PointerProperty
 from bpy.types import Material, UILayout
 
-from ..util import get_export_collections_materials
+from ..util import get_export_collections, get_export_collections_materials
 
 class OUTPUT_OT_toggle_texture_pack_expand(bpy.types.Operator):
     """Toggle texture pack expand/collapse state"""
@@ -180,6 +180,12 @@ def mesh_export(layout: UILayout, context: Context):
     if not context.scene.replicant_show_mesh_export:
         return
 
+    export_collections = get_export_collections()
+    if not export_collections:
+        box = box.box()
+        box.label(text="None found", icon='INFO')
+        return
+
     # Export button
     row = box.row()
     row.scale_y = 2.0
@@ -209,13 +215,29 @@ def material_export(layout: UILayout, context: Context):
         mats_box.label(text="None found", icon='INFO')
         return
     
+    listed_paths = set()
     for material in materials:
+        duplicate = False
+        if (material.replicant_pack_path, material.replicant_export) in listed_paths:
+            duplicate = True
+        listed_paths.add((material.replicant_pack_path, material.replicant_export))
         row = mats_box.row()
-        row.label(text=material.name, icon='NODE_SOCKET_SHADER')
+        icon = 'NODE_SOCKET_SHADER'
+        if duplicate:
+            row.alert = True
+            icon = 'ERROR'
+        row.label(text=material.replicant_pack_path, icon=icon)
+        row.label(text=material.name, icon='MATERIAL')
         sub_row = row.row()
         sub_row.enabled = False
         sub_row.label(text=material.replicant_master_material)
         row.prop(material, "replicant_export", text="")
+        if duplicate:
+            error_row = mats_box.row()
+            error_row.alert = True
+            error_row.label(text="", icon='FILE_PARENT')
+            error_box = error_row.box()
+            error_box.label(text="Duplicate material PACK path, will overwrite another during export! Did you remember to change a custom material's PACK path?")
 
     # Export button
     row = box.row()
