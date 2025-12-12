@@ -66,6 +66,8 @@ def export(operator):
             materials: list[str] = []
             for b_obj in b_objs:
                 for material in b_obj.data.materials:
+                    if material.name in materials:
+                        continue
                     materials.append(material.name)
                     mesh_head.materials.append(MeshHeadMaterial(
                         name=material.name,
@@ -365,18 +367,22 @@ def update_imports(pack: Pack, obj: Object):
                 pack.imports.append(new_import)
             
 def update_mesh_asset(mesh_asset: tpGxMeshAssetV2, name: str, objects: list[Object], collections: list[Collection]):
-    imported_materials = [(m.name, m.path) for m in mesh_asset.imported_materials]
+    imported_materials = set([(m.name, m.path) for m in mesh_asset.imported_materials])
 
     mesh = MeshAssetMesh(name)
+    added_materials = set()
     for obj in objects:
         for mat in obj.data.materials:
-            mesh.materials.append(MeshAssetMaterial(mat.name))
+            if mat.name not in added_materials:
+                mesh.materials.append(MeshAssetMaterial(mat.name))
+                added_materials.add(mat.name)
             if (mat.name, mat.replicant_pack_path) in imported_materials:
                 continue
             mesh_asset.imported_materials.append(ImportedMaterial(
                 mat.name,
                 mat.replicant_pack_path
             ))
+            imported_materials.add((mat.name, mat.replicant_pack_path))
     for col in collections:
         if name == col.name:
             mesh.lod_distance = col.replicant_lod_distance

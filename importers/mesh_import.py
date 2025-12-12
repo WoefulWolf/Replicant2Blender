@@ -147,10 +147,12 @@ def construct_meshes(pack_path: str, pack: Pack):
 
 
             # Assign weights
+            used_vertex_groups = set()
             weights_buffers: list[WeightsBuffer] = vertex_buffers.get_buffers_of_type(VertexBufferType.WEIGHTS)
-            if len(weights_buffers) > 0:
+            bones_buffers: list[BonesBuffer] = vertex_buffers.get_buffers_of_type(VertexBufferType.BONES)
+            if len(weights_buffers) > 0 and len(bones_buffers) > 0:
                 weights_buffer = weights_buffers[0]
-                bones_buffer: BonesBuffer = vertex_buffers.get_buffers_of_type(VertexBufferType.BONES)[0]
+                bones_buffer = bones_buffers[0]
 
                 for m, weight in enumerate(weights_buffer.weights):
                     # Filter out any floating point issues
@@ -172,7 +174,19 @@ def construct_meshes(pack_path: str, pack: Pack):
                     for n, group in enumerate(vertex_groups):
                         if vertex_weights[n] > 0:
                             group.add([m], vertex_weights[n], "REPLACE")
-                
+                            used_vertex_groups.add(group)
+            elif len(bones_buffers) > 0:
+                bones_buffer = bones_buffers[0]
+                for m, bone_indices in enumerate(bones_buffer.bones):
+                    # No weights buffer, assume 100% weight for the first bone
+                    first_bone_group = b_obj.vertex_groups[bone_indices[0]]
+                    first_bone_group.add([m], 1.0, "REPLACE")
+                    used_vertex_groups.add(first_bone_group)
+
+            unused_vertex_groups = set(b_obj.vertex_groups).difference(used_vertex_groups)
+            for vg in unused_vertex_groups:
+                b_obj.vertex_groups.remove(vg)
+
             # Assign UVs
             uv_buffers: list[UVsBuffer] = vertex_buffers.get_buffers_of_type(VertexBufferType.UV)
 
