@@ -237,6 +237,7 @@ class Object:
             for vb in vertex_buffers:
                 vb.write_to(writer)
                 writer.align_min_padding(8, 0)
+            writer.align_min_padding(8, 8)
 
 
 @dataclass
@@ -495,7 +496,6 @@ class tpGxMeshHead:
         Object.write_list(writer, self.objects)
 
         # Write materials
-        writer.align_min_padding(8, 8)
         materials_pos = writer.tell()
         writer.patch_placeholder(materials_placeholder, materials_pos)
         Material.write_list(writer, self.materials)

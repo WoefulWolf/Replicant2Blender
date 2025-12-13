@@ -396,8 +396,8 @@ class Pack:
 
         # Write files data (mesh/texture data)
         files_data_start = writer.tell()
+        writer.align_relative_proper_null_terminated(files_data_start, 32, b'\x40')
         for i, file_data in enumerate(self.files_data):
-            writer.align_relative_proper_null_terminated(files_data_start, 32, b'\x40')
             if file_data.mesh_data:
                 file = self.files[file_data.file_index]
                 file.data_offset.offset = writer.tell() - files_data_start
@@ -410,8 +410,7 @@ class Pack:
                 file.data_offset.offset = writer.tell() - files_data_start
                 tex_head: tpGxTexHead = file.content.asset_data
                 file_data.tex_data.write_to(writer, tex_head)
-
-        writer.align_relative_proper_null_terminated(files_data_start, 4)
+            writer.align_relative_proper(files_data_start, 32, padding_byte=b'\x40')
 
         # Calculate pack_files_data_size
         pack_files_data_size = writer.tell() - files_data_start

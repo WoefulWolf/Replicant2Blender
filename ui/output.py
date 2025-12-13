@@ -6,6 +6,19 @@ from bpy.types import Material, UILayout
 
 from ..util import get_export_collections, get_export_collections_materials
 
+class PreprocessingSteps(bpy.types.PropertyGroup):
+    triangulate: bpy.props.BoolProperty(
+        name="Triangulate Meshes",
+        description="Enable automated triangulation of meshes",
+        default=True,
+    )
+
+    rip_mesh_uv_islands: bpy.props.BoolProperty(
+        name="Rip Meshes By UV Islands",
+        description="Enable automated ripping of meshes by UV islands",
+        default=True,
+    )
+
 class OUTPUT_OT_toggle_texture_pack_expand(bpy.types.Operator):
     """Toggle texture pack expand/collapse state"""
     bl_idname = "output.toggle_texture_pack_expand"
@@ -186,6 +199,12 @@ def mesh_export(layout: UILayout, context: Context):
         box.label(text="None found", icon='INFO')
         return
 
+    pp_box = box.box()
+    pp_box.label(text="Non-Destructive Preprocessing", icon='PRESET')
+    row = pp_box.row(align=True)
+    row.prop(context.scene.replicant_preprocessing_steps, "triangulate", icon='MOD_TRIANGULATE')
+    row.prop(context.scene.replicant_preprocessing_steps, "rip_mesh_uv_islands", icon='UV_ISLANDSEL')
+
     # Export button
     row = box.row()
     row.scale_y = 2.0
@@ -353,6 +372,9 @@ def register():
     # Register operators
     bpy.utils.register_class(OUTPUT_OT_toggle_texture_pack_expand)
     bpy.utils.register_class(OUTPUT_OT_rename_texture_pack)
+    bpy.utils.register_class(PreprocessingSteps)
+
+    bpy.types.Scene.replicant_preprocessing_steps = bpy.props.PointerProperty(type=PreprocessingSteps)
 
     bpy.types.Scene.replicant_show_export_sources = bpy.props.BoolProperty(
         name="Show Export Sources",
@@ -405,6 +427,7 @@ def register():
 def unregister():
     bpy.utils.unregister_class(OUTPUT_PT_replicant)
 
+    del bpy.types.Scene.replicant_preprocessing_steps
     del bpy.types.Scene.replicant_show_mesh_export
     del bpy.types.Scene.replicant_show_material_export
     del bpy.types.Scene.replicant_show_texture_export
@@ -413,5 +436,6 @@ def unregister():
     del bpy.types.Collection.replicant_export
 
     # Unregister operators
+    bpy.utils.unregister_class(PreprocessingSteps)
     bpy.utils.unregister_class(OUTPUT_OT_rename_texture_pack)
     bpy.utils.unregister_class(OUTPUT_OT_toggle_texture_pack_expand)

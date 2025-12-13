@@ -6,6 +6,7 @@ from bpy.types import Operator, OperatorFileListElement
 from .importers import pack_import
 from .exporters import pack_export
 from .ui import output, material
+from .operators import rip_mesh_uv_islands, triangulate
 from .util import log, show_blender_system_console
 
 class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
@@ -55,6 +56,8 @@ def register():
     bpy.types.TOPBAR_MT_file_import.append(replicant_import_mesh_pack)
     bpy.utils.register_class(Replicant2BlenderPreferences)
     pack_export.register()
+    triangulate.register()
+    rip_mesh_uv_islands.register()
     output.register()
     material.register()
     log.d("Registered")
@@ -63,6 +66,8 @@ def unregister():
     log.d("Unregistering...")
     material.unregister()
     output.unregister()
+    rip_mesh_uv_islands.unregister()
+    triangulate.unregister()
     pack_export.unregister()
     bpy.utils.unregister_class(Replicant2BlenderPreferences)
     bpy.types.TOPBAR_MT_file_import.remove(replicant_import_mesh_pack)
