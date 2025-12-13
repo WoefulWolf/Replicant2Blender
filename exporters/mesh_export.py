@@ -40,18 +40,36 @@ def temporary_mesh_duplicates(objects: list[Object]):
     original_active_name = bpy.context.view_layer.objects.active.name if bpy.context.view_layer.objects.active else None
     original_selection_names = [obj.name for obj in bpy.context.selected_objects]
     excluded_collections = {}
+    collection_visibility_state = {}
 
     try:
         # Create temporary collection (no need to hide - it will be deleted before user sees it)
         temp_collection = bpy.data.collections.new("__TEMP_EXPORT__")
         bpy.context.scene.collection.children.link(temp_collection)
 
-        # Temporarily include all excluded collections so objects can be selected
+        # Temporarily include all excluded collections and make them visible so objects can be selected
         view_layer = bpy.context.view_layer
         for layer_col in get_all_layer_collections_recursive(view_layer.layer_collection):
+            col = layer_col.collection
+
+            # Store exclude state and only set to False if actually excluded
             if layer_col.exclude:
                 excluded_collections[layer_col.name] = True
                 layer_col.exclude = False
+
+            # Store all visibility states
+            collection_visibility_state[layer_col.name] = {
+                'layer_hide_viewport': layer_col.hide_viewport,
+                'collection_hide_viewport': col.hide_viewport,
+                'collection_hide_render': col.hide_render,
+                'collection_hide_select': col.hide_select,
+            }
+
+            # Make collections fully visible
+            layer_col.hide_viewport = False
+            col.hide_viewport = False
+            col.hide_render = False
+            col.hide_select = False
 
         # Duplicate each object using Blender's duplicate operator for proper deep copy
         for obj in objects:
@@ -142,9 +160,20 @@ def temporary_mesh_duplicates(objects: list[Object]):
                     # Object was deleted, skip
                     pass
 
-            # Step 3: Restore excluded collections
+            # Step 3: Restore collection visibility states
             view_layer = bpy.context.view_layer
             for layer_col in get_all_layer_collections_recursive(view_layer.layer_collection):
+                col = layer_col.collection
+
+                # Restore all visibility states
+                if layer_col.name in collection_visibility_state:
+                    vis_state = collection_visibility_state[layer_col.name]
+                    layer_col.hide_viewport = vis_state['layer_hide_viewport']
+                    col.hide_viewport = vis_state['collection_hide_viewport']
+                    col.hide_render = vis_state['collection_hide_render']
+                    col.hide_select = vis_state['collection_hide_select']
+
+                # Restore exclude state
                 if layer_col.name in excluded_collections:
                     layer_col.exclude = True
 
