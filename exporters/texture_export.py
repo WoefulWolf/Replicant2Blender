@@ -5,10 +5,11 @@ import time
 
 import bpy
 from bpy.types import Material
+from puredds import DDS
 
 from ..classes.tex_data import tpGxTexData
 from ..classes.common import DataOffset
-from ..classes.tex_head import Subresource, get_xon_surface_format, tpGxTexHead
+from ..classes.tex_head import Subresource, XonSurfaceFormat, tpGxTexHead, ResourceFormat, ResourceDimension
 from ..classes.asset_package import tpXonAssetHeader
 from ..classes.binary_writer import BinaryWriter
 from ..classes.bxon import BXON
@@ -68,8 +69,6 @@ def export(operator):
             else:
                 texture_paths.add(sampler.texture_path)
 
-            from puredds import DDS
-
             try:
                 with open(sampler.texture_path, 'rb') as f:
                     data = f.read()
@@ -84,20 +83,20 @@ def export(operator):
             tex_head.height = dds.get_height()
             tex_head.depth = max(dds.get_depth(), 1)
             tex_head.mip_count = dds.get_mip_count()
-            tex_head.size = dds.get_size()
+            tex_head.total_data_size = dds.get_size()
             dxgi_format = dds.get_dxgi_format()
             if not dxgi_format:
                 log.e(f"Failed to get format of {sampler.texture_path}! Does it include a modern DXT10 header?")
                 operator.report({'ERROR'}, f"Failed to get format of {sampler.texture_path}! Does it include a modern DXT10 header?")
                 return {'CANCELLED'}
-            tex_head.surface_format = get_xon_surface_format(dxgi_format)
+            tex_head.surface_format = get_xon_surface_format(dds)
             for i in range(dds.get_subresource_count()):
                 tex_head.subresources.append(Subresource(
                     offset=0,
                     unknown0=0,
                     row_pitch=dds.get_subresource_row_pitch(i),
                     unknown1=0,
-                    size=dds.get_subresource_size(i),
+                    slice_size=dds.get_subresource_size(i),
                     unknown2=0,
                     width=dds.get_subresource_width(i),
                     height=dds.get_subresource_height(i),
@@ -146,3 +145,62 @@ def export(operator):
     log.d(f"Finished writing {filepath} in {end - write_start:.4f} seconds.")
     log.i(f"Total export time: {end - start:.4f} seconds!")
     return {'FINISHED'}
+
+def get_xon_surface_format(dds: DDS) -> XonSurfaceFormat:
+    from puredds.enums import DDS_RESOURCE_MISC
+
+    # Map DXGI format to ResourceFormat (inverse of the mapping in tex_head.py)
+    dxgi_to_resource_format = {
+        2: ResourceFormat.R32G32B32A32_FLOAT,
+        6: ResourceFormat.R32G32B32_FLOAT,
+        16: ResourceFormat.R32G32_FLOAT,
+        41: ResourceFormat.R32_FLOAT,
+        10: ResourceFormat.R16G16B16A16_FLOAT,
+        34: ResourceFormat.R16G16_FLOAT,
+        54: ResourceFormat.R16_FLOAT,
+        28: ResourceFormat.R8G8B8A8_UNORM,
+        29: ResourceFormat.R8G8B8A8_UNORM_SRGB,
+        49: ResourceFormat.R8G8_UNORM,
+        61: ResourceFormat.R8_UNORM,
+        87: ResourceFormat.B8G8R8A8_UNORM,
+        91: ResourceFormat.B8G8R8A8_UNORM_SRGB,
+        88: ResourceFormat.B8G8R8X8_UNORM,
+        93: ResourceFormat.B8G8R8X8_UNORM_SRGB,
+        71: ResourceFormat.BC1_UNORM,
+        72: ResourceFormat.BC1_UNORM_SRGB,
+        74: ResourceFormat.BC2_UNORM,
+        75: ResourceFormat.BC2_UNORM_SRGB,
+        77: ResourceFormat.BC3_UNORM,
+        78: ResourceFormat.BC3_UNORM_SRGB,
+        80: ResourceFormat.BC4_UNORM,
+        83: ResourceFormat.BC5_UNORM,
+        95: ResourceFormat.BC6H_UF16,
+        96: ResourceFormat.BC6H_SF16,
+        98: ResourceFormat.BC7_UNORM,
+        99: ResourceFormat.BC7_UNORM_SRGB,
+    }
+
+    # Get DXGI format from DDS
+    dxgi_format = dds.get_dxgi_format()
+    resource_format = dxgi_to_resource_format.get(dxgi_format, ResourceFormat.UNKNOWN)
+
+    # Determine resource dimension
+    if dds.is_volume():
+        resource_dimension = ResourceDimension.TEXTURE3D
+    elif dds.header10 and (dds.header10.miscFlag & DDS_RESOURCE_MISC.TEXTURECUBE):
+        resource_dimension = ResourceDimension.CUBEMAP
+    else:
+        resource_dimension = ResourceDimension.TEXTURE2D
+
+    # Determine if texture has mipmaps
+    generate_mips = dds.get_mip_count() <= 1
+
+    # Default usage value
+    usage_maybe = 0
+
+    return XonSurfaceFormat(
+        usage_maybe=usage_maybe,
+        resource_format=resource_format,
+        resource_dimension=resource_dimension,
+        generate_mips=generate_mips
+    )

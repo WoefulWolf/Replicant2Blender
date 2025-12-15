@@ -8,82 +8,124 @@ from ..classes.binary_writer import BinaryWriter
 from .common import DataOffset
 
 
-class XonSurfaceDXGIFormat(IntEnum):
-    UNKNOWN = 0x00000000
-    R32G32B32A32_FLOAT = 0x00010000
-    R8G8B8A8_UNORM_STRAIGHT= 0x00010700
-    R8G8B8A8_UNORM = 0x00010800
-    R8_UNORM= 0x00010a00
-    R8G8B8A8_UNORM_SRGB = 0x00010B00
-    BC1_UNORM = 0x00010F00
-    BC1_UNORM_SRGB = 0x00011000
-    BC2_UNORM = 0x00011100
-    BC2_UNORM_SRGB = 0x00011200
-    BC3_UNORM = 0x00011300
-    BC3_UNORM_SRGB = 0x00011400
-    BC4_UNORM = 0x00011500
-    BC5_UNORM = 0x00011600
-    BC7_UNORM = 0x00011900
-    BC1_UNORM_VOLUME = 0x00021700
-    BC7_UNORM_SRGB = 0x00021A00
-    R32G32B32A32_UINT = 0x00030000
-    BC6H_UF16 = 0x00031700
+class ResourceDimension(IntEnum):
+    TEXTURE2D = 1
+    TEXTURE3D = 2
+    CUBEMAP = 3
 
-def get_dxgi_format(surfaceFormat: XonSurfaceDXGIFormat) -> int | None:
-	"""Convert XonSurfaceDXGIFormat enum to DXGI format integer."""
-	mapping = {
-		XonSurfaceDXGIFormat.UNKNOWN: 0,
-		XonSurfaceDXGIFormat.R32G32B32A32_FLOAT: 2,
-		XonSurfaceDXGIFormat.R32G32B32A32_UINT: 3,
-		XonSurfaceDXGIFormat.R8G8B8A8_UNORM_STRAIGHT: 28,
-		XonSurfaceDXGIFormat.R8G8B8A8_UNORM: 28,
-		XonSurfaceDXGIFormat.R8G8B8A8_UNORM_SRGB: 29,
-		XonSurfaceDXGIFormat.R8_UNORM: 61,
-		XonSurfaceDXGIFormat.BC1_UNORM: 71,
-		XonSurfaceDXGIFormat.BC1_UNORM_VOLUME: 71,
-		XonSurfaceDXGIFormat.BC1_UNORM_SRGB: 72,
-		XonSurfaceDXGIFormat.BC2_UNORM: 74,
-		XonSurfaceDXGIFormat.BC2_UNORM_SRGB: 75,
-		XonSurfaceDXGIFormat.BC3_UNORM: 77,
-		XonSurfaceDXGIFormat.BC3_UNORM_SRGB: 78,
-		XonSurfaceDXGIFormat.BC4_UNORM: 80,
-		XonSurfaceDXGIFormat.BC5_UNORM: 83,
-		XonSurfaceDXGIFormat.BC6H_UF16: 95,
-		XonSurfaceDXGIFormat.BC7_UNORM: 98,
-		XonSurfaceDXGIFormat.BC7_UNORM_SRGB: 99,
-	}
 
-	return mapping.get(surfaceFormat, None)
+class ResourceFormat(IntEnum):
+    R32G32B32A32_FLOAT = 0
+    R32G32B32_FLOAT = 1
+    R32G32_FLOAT = 2
+    R32_FLOAT = 3
+    R16G16B16A16_FLOAT = 4
+    R16G16_FLOAT = 5
+    R16_FLOAT = 6
+    R8G8B8A8_UNORM = 7
+    R8G8B8A8_UNORM_SRGB = 8
+    R8G8_UNORM = 9
+    R8_UNORM = 10
+    B8G8R8A8_UNORM = 11
+    B8G8R8A8_UNORM_SRGB = 12
+    B8G8R8X8_UNORM = 13
+    B8G8R8X8_UNORM_SRGB = 14
+    BC1_UNORM = 15
+    BC1_UNORM_SRGB = 16
+    BC2_UNORM = 17
+    BC2_UNORM_SRGB = 18
+    BC3_UNORM = 19
+    BC3_UNORM_SRGB = 20
+    BC4_UNORM = 21
+    BC5_UNORM = 22
+    BC6H_UF16 = 23
+    BC6H_SF16 = 24
+    BC7_UNORM = 25
+    BC7_UNORM_SRGB = 26
+    UNKNOWN = 27
 
-def get_xon_surface_format(dxgi_format: int) -> XonSurfaceDXGIFormat:
-	"""Reverse mapping from DXGI format integer to XonSurfaceDXGIFormat enum."""
-	mapping = {
-		0: XonSurfaceDXGIFormat.UNKNOWN,
-		2: XonSurfaceDXGIFormat.R32G32B32A32_FLOAT,
-		3: XonSurfaceDXGIFormat.R32G32B32A32_UINT,
-		28: XonSurfaceDXGIFormat.R8G8B8A8_UNORM,
-		29: XonSurfaceDXGIFormat.R8G8B8A8_UNORM_SRGB,
-		61: XonSurfaceDXGIFormat.R8_UNORM,
-		71: XonSurfaceDXGIFormat.BC1_UNORM,
-		72: XonSurfaceDXGIFormat.BC1_UNORM_SRGB,
-		74: XonSurfaceDXGIFormat.BC2_UNORM,
-		75: XonSurfaceDXGIFormat.BC2_UNORM_SRGB,
-		77: XonSurfaceDXGIFormat.BC3_UNORM,
-		78: XonSurfaceDXGIFormat.BC3_UNORM_SRGB,
-		80: XonSurfaceDXGIFormat.BC4_UNORM,
-		83: XonSurfaceDXGIFormat.BC5_UNORM,
-		95: XonSurfaceDXGIFormat.BC6H_UF16,
-		98: XonSurfaceDXGIFormat.BC7_UNORM,
-		99: XonSurfaceDXGIFormat.BC7_UNORM_SRGB,
-	}
 
-	return mapping.get(dxgi_format, XonSurfaceDXGIFormat.UNKNOWN)
+@dataclass
+class XonSurfaceFormat:
+    usage_maybe: int
+    resource_format: ResourceFormat
+    resource_dimension: ResourceDimension
+    generate_mips: bool
 
-def get_alpha_mode(surfaceFormat: XonSurfaceDXGIFormat):
-	if (surfaceFormat == XonSurfaceDXGIFormat.R8G8B8A8_UNORM_STRAIGHT):
-		return 1
+    def get_dxgi_format(self) -> int:
+        """Get DXGI_FORMAT integer value for DDS export."""
+        dxgi_mapping = {
+            ResourceFormat.R32G32B32A32_FLOAT: 2,
+            ResourceFormat.R32G32B32_FLOAT: 6,
+            ResourceFormat.R32G32_FLOAT: 16,
+            ResourceFormat.R32_FLOAT: 41,
+            ResourceFormat.R16G16B16A16_FLOAT: 10,
+            ResourceFormat.R16G16_FLOAT: 34,
+            ResourceFormat.R16_FLOAT: 54,
+            ResourceFormat.R8G8B8A8_UNORM: 28,
+            ResourceFormat.R8G8B8A8_UNORM_SRGB: 29,
+            ResourceFormat.R8G8_UNORM: 49,
+            ResourceFormat.R8_UNORM: 61,
+            ResourceFormat.B8G8R8A8_UNORM: 87,
+            ResourceFormat.B8G8R8A8_UNORM_SRGB: 91,
+            ResourceFormat.B8G8R8X8_UNORM: 88,
+            ResourceFormat.B8G8R8X8_UNORM_SRGB: 93,
+            ResourceFormat.BC1_UNORM: 71,
+            ResourceFormat.BC1_UNORM_SRGB: 72,
+            ResourceFormat.BC2_UNORM: 74,
+            ResourceFormat.BC2_UNORM_SRGB: 75,
+            ResourceFormat.BC3_UNORM: 77,
+            ResourceFormat.BC3_UNORM_SRGB: 78,
+            ResourceFormat.BC4_UNORM: 80,
+            ResourceFormat.BC5_UNORM: 83,
+            ResourceFormat.BC6H_UF16: 95,
+            ResourceFormat.BC6H_SF16: 96,
+            ResourceFormat.BC7_UNORM: 98,
+            ResourceFormat.BC7_UNORM_SRGB: 99,
+            ResourceFormat.UNKNOWN: 0,
+        }
+        return dxgi_mapping.get(self.resource_format, 0)
 
-	return 2
+    def get_d3d10_dimension(self) -> int:
+        """Get D3D10_RESOURCE_DIMENSION value for DDS export."""
+        mapping = {
+            ResourceDimension.TEXTURE2D: 3,  # D3D10_RESOURCE_DIMENSION_TEXTURE2D
+            ResourceDimension.TEXTURE3D: 4,  # D3D10_RESOURCE_DIMENSION_TEXTURE3D
+            ResourceDimension.CUBEMAP: 3,    # D3D10_RESOURCE_DIMENSION_TEXTURE2D (with cubemap flag)
+        }
+        return mapping.get(self.resource_dimension, 3)
+
+    def get_alpha_mode(self) -> int:
+        """Get DDS alpha mode value."""
+        # Check if format has SRGB suffix
+        if "SRGB" in self.resource_format.name:
+            return 1  # DDS_ALPHA_MODE_STRAIGHT
+        return 0  # DDS_ALPHA_MODE_UNKNOWN
+
+    def is_compressed(self) -> bool:
+        """Check if the format is a block-compressed format."""
+        return "BC" in self.resource_format.name
+
+    def get_bytes_per_pixel(self) -> int:
+        """Get bytes per pixel for uncompressed formats."""
+        format_bpp = {
+            ResourceFormat.R32G32B32A32_FLOAT: 16,
+            ResourceFormat.R32G32B32_FLOAT: 12,
+            ResourceFormat.R32G32_FLOAT: 8,
+            ResourceFormat.R32_FLOAT: 4,
+            ResourceFormat.R16G16B16A16_FLOAT: 8,
+            ResourceFormat.R16G16_FLOAT: 4,
+            ResourceFormat.R16_FLOAT: 2,
+            ResourceFormat.R8G8B8A8_UNORM: 4,
+            ResourceFormat.R8G8B8A8_UNORM_SRGB: 4,
+            ResourceFormat.R8G8_UNORM: 2,
+            ResourceFormat.R8_UNORM: 1,
+            ResourceFormat.B8G8R8A8_UNORM: 4,
+            ResourceFormat.B8G8R8A8_UNORM_SRGB: 4,
+            ResourceFormat.B8G8R8X8_UNORM: 4,
+            ResourceFormat.B8G8R8X8_UNORM_SRGB: 4,
+        }
+        return format_bpp.get(self.resource_format, 4)  # Default to 4 bytes
 
 @dataclass
 class Subresource:
@@ -91,7 +133,7 @@ class Subresource:
     unknown0: int
     row_pitch: int
     unknown1: int
-    size: int
+    slice_size: int
     unknown2: int
     width: int
     height: int
@@ -106,7 +148,7 @@ class Subresource:
             unknown0=values[1],
             row_pitch=values[2],
             unknown1=values[3],
-            size=values[4],
+            slice_size=values[4],
             unknown2=values[5],
             width=values[6],
             height=values[7],
@@ -120,7 +162,7 @@ class Subresource:
             self.unknown0,
             self.row_pitch,
             self.unknown1,
-            self.size,
+            self.slice_size,
             self.unknown2,
             self.width,
             self.height,
@@ -134,14 +176,13 @@ class tpGxTexHead:
     height: int = field(default=0)
     depth: int = field(default=0)
     mip_count: int = field(default=0)
-    size: int = field(default=0)
+    total_data_size: int = field(default=0)
     internal_offset: DataOffset = field(default_factory=lambda: DataOffset(0, True))
-    surface_format: XonSurfaceDXGIFormat = field(default=XonSurfaceDXGIFormat.UNKNOWN)
+    surface_format: XonSurfaceFormat = field(default_factory=lambda: XonSurfaceFormat(0, ResourceFormat.UNKNOWN, ResourceDimension.TEXTURE2D, False))
     subresources: List[Subresource] = field(default_factory=list)
 
     def get_format_str(self) -> str:
-        from puredds import DXGI_FORMAT
-        return DXGI_FORMAT(get_dxgi_format(self.surface_format)).name
+        return self.surface_format.resource_format.name
 
     @classmethod
     def from_stream(cls, stream: BinaryIO) -> 'tpGxTexHead':
@@ -152,11 +193,16 @@ class tpGxTexHead:
         internal_offset = DataOffset.from_stream(stream)
 
         # Parse surface format
-        surface_format_value = struct.unpack('<I', stream.read(4))[0]
+        usage, res_format, res_dimension, gen_mips = struct.unpack('<BBB?', stream.read(4))
         try:
-            surface_format = XonSurfaceDXGIFormat(surface_format_value)
+            resource_format = ResourceFormat(res_format)
         except ValueError:
-            surface_format = XonSurfaceDXGIFormat.UNKNOWN
+            resource_format = ResourceFormat.UNKNOWN
+        try:
+            resource_dimension = ResourceDimension(res_dimension)
+        except ValueError:
+            resource_dimension = ResourceDimension.TEXTURE2D
+        surface_format = XonSurfaceFormat(usage, resource_format, resource_dimension, gen_mips)
 
         # Get subresources info
         subresources_count = struct.unpack('<I', stream.read(4))[0]
@@ -174,7 +220,7 @@ class tpGxTexHead:
             height=height,
             depth=depth,
             mip_count=mip_count,
-            size=size,
+            total_data_size=size,
             internal_offset=internal_offset,
             surface_format=surface_format,
             subresources=subresources
@@ -191,14 +237,19 @@ class tpGxTexHead:
             self.height,
             self.depth,
             self.mip_count,
-            self.size
+            self.total_data_size
         )
 
         # Write internal offset
         self.internal_offset.write_to(writer)
 
         # Write surface format
-        writer.write_struct('<I', self.surface_format)
+        writer.write_struct('<BBB?',
+            self.surface_format.usage_maybe,
+            self.surface_format.resource_format,
+            self.surface_format.resource_dimension,
+            self.surface_format.generate_mips
+        )
 
         # Write subresources count
         writer.write_struct('<I', len(self.subresources))

@@ -5,7 +5,7 @@ from bpy.types import Material
 
 from ..classes.material_instance import tpGxMaterialInstanceV2
 from ..classes.asset_package import tpXonAssetHeader
-from ..classes.tex_head import get_dxgi_format, get_alpha_mode, tpGxTexHead
+from ..classes.tex_head import tpGxTexHead, ResourceDimension, ResourceFormat
 from ..classes.pack import Pack, PackFile
 
 from .materials.master_rs_standard import master_rs_standard
@@ -195,23 +195,43 @@ def extract_textures(pack_dir: str, texture_packs: list[Pack]):
             texture_file.write(str_to_bytes("DDS\x20"))
             # HeaderSize
             texture_file.write(uint32_to_bytes(124))
+
             # Flags
-            flags = 0x1 | 0x2 | 0x4 | 0x1000 | 0x80000    # DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT | DDSD_LINEARSIZE
+            is_compressed = tex_head.surface_format.is_compressed()
+            is_3d_texture = tex_head.surface_format.resource_dimension == ResourceDimension.TEXTURE3D
+            flags = 0x1 | 0x2 | 0x4 | 0x1000    # DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT
+            if is_compressed:
+                flags |= 0x80000    # DDSD_LINEARSIZE
+            else:
+                flags |= 0x8        # DDSD_PITCH
             if tex_head.mip_count > 1:
                 flags |= 0x20000    # DDSD_MIPMAPCOUNT
-            if tex_head.depth > 1:
+            if is_3d_texture and tex_head.depth > 1:
                 flags |= 0x800000    # DDSD_DEPTH
             texture_file.write(uint32_to_bytes(flags))
+
             # Height
             texture_file.write(uint32_to_bytes(tex_head.height))
             # Width
             texture_file.write(uint32_to_bytes(tex_head.width))
-            # Size
-            texture_file.write(uint32_to_bytes(tex_head.size))
-            # Depth
-            texture_file.write(uint32_to_bytes(tex_head.depth))
+
+            # Pitch or LinearSize
+            if is_compressed:
+                # For compressed formats, use the total size
+                texture_file.write(uint32_to_bytes(tex_head.total_data_size))
+            else:
+                # For uncompressed formats, calculate pitch (bytes per scanline)
+                bytes_per_pixel = tex_head.surface_format.get_bytes_per_pixel()
+                pitch = tex_head.width * bytes_per_pixel
+                texture_file.write(uint32_to_bytes(pitch))
+
+            # Depth (only for 3D/volume textures, otherwise 0)
+            depth_value = tex_head.depth if is_3d_texture else 0
+            texture_file.write(uint32_to_bytes(depth_value))
+
             # MipMapCount
             texture_file.write(uint32_to_bytes(tex_head.mip_count))
+
             # Reserved
             for i in range(11):
                 texture_file.write(uint32_to_bytes(0))
@@ -230,14 +250,18 @@ def extract_textures(pack_dir: str, texture_packs: list[Pack]):
                 texture_file.write(uint32_to_bytes(0))
 
             # CAPS
+            is_cubemap = tex_head.surface_format.resource_dimension == ResourceDimension.CUBEMAP
             caps = 0x1000   # DDSCAPS_TEXTURE
-            if tex_head.mip_count > 1:
+            if tex_head.mip_count > 1 or is_cubemap:
                 caps |= 0x8 | 0x400000    # DDSCAPS_MIPMAP | DDSCAPS_COMPLEX
             texture_file.write(uint32_to_bytes(caps))
+
             # CAPS 2
             caps2 = 0x0
-            if tex_head.depth > 1:
+            if is_3d_texture:
                 caps2 |= 0x200000   # DDSCAPS2_VOLUME
+            if is_cubemap:
+                caps2 |= 0x200 | 0xFE00    # DDSCAPS2_CUBEMAP | all 6 faces (POSITIVEX, NEGATIVEX, POSITIVEY, NEGATIVEY, POSITIVEZ, NEGATIVEZ)
             texture_file.write(uint32_to_bytes(caps2))
             # CAPS 3
             texture_file.write(uint32_to_bytes(0))
@@ -248,34 +272,38 @@ def extract_textures(pack_dir: str, texture_packs: list[Pack]):
 
             # DDS_HEADER_DXT10
             # DXGI Format
-            format = get_dxgi_format(tex_head.surface_format)
-            if format == None or format == "UNKNOWN":
-                log.w(f"Texture extraction failed! {file.name}")
+            dxgi_format = tex_head.surface_format.get_dxgi_format()
+            if dxgi_format == 0:  # DXGI_FORMAT_UNKNOWN
+                log.w(f"Texture extraction failed! {file.name} - Unknown format: {tex_head.surface_format.resource_format.name}")
                 failed_texture_files.append(file)
                 texture_file.close()
                 k += 1
                 continue
-            else:
-                texture_file.write(uint32_to_bytes(format))
+            texture_file.write(uint32_to_bytes(dxgi_format))
+
             # D3D10 Resource Dimension
-            dimension = 3
-            if tex_head.depth > 1:
-                dimension = 4
+            dimension = tex_head.surface_format.get_d3d10_dimension()
             texture_file.write(uint32_to_bytes(dimension))
+
             # MiscFlags
-            texture_file.write(uint32_to_bytes(0))
+            misc_flags = 0
+            if tex_head.surface_format.resource_dimension == ResourceDimension.CUBEMAP:
+                misc_flags = 0x4  # D3D11_RESOURCE_MISC_TEXTURECUBE
+            texture_file.write(uint32_to_bytes(misc_flags))
+
             # ArraySize
             texture_file.write(uint32_to_bytes(1))
-            # MiscFlags2
-            alpha_mode = get_alpha_mode(tex_head.surface_format)
+
+            # MiscFlags2 (alpha mode)
+            alpha_mode = tex_head.surface_format.get_alpha_mode()
             texture_file.write(uint32_to_bytes(alpha_mode))
 
             # TextureData - find and write texture data
             for file_data in pack.files_data:
                 if file_data.file_index == idx and file_data.tex_data:
-                    # Concatenate all subresource data (mipmaps)
-                    for subresource in file_data.tex_data.subresource_data:
-                        texture_file.write(subresource)
+                    # Write all subresource data (all mip levels and depth slices)
+                    for subresource_data in file_data.tex_data.subresource_data:
+                        texture_file.write(subresource_data)
                     break
 
             texture_file.close()
