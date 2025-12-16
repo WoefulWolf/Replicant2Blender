@@ -469,6 +469,7 @@ class VertexData:
         vertex_data = {}
 
         # Iterate through loops to get the data
+        has_unassigned_vertices = False
         for poly in mesh.polygons:
             for loop_index in poly.loop_indices:
                 loop = mesh.loops[loop_index]
@@ -523,8 +524,12 @@ class VertexData:
 
                 vertex_data[vert_index]['bones'] = vertex_bones
                 if sum(vertex_weights) == 0:
-                    log.e(f"Cannot generate weights for {obj.name}! Some vertices are unassigned!")
+                    has_unassigned_vertices = True
+                    continue
                 vertex_data[vert_index]['weights'] = [float(i)/sum(vertex_weights) for i in vertex_weights] # Normalize weights
+
+        if has_unassigned_vertices:
+            log.e(f"Cannot generate complete weights for {obj.name}! Some vertices are unassigned!")
 
         # Convert to sorted lists
         for vert_index in sorted(vertex_data.keys()):
