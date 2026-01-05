@@ -45,7 +45,7 @@ def construct_meshes(pack_path: str, pack: Pack):
         mesh_head: tpGxMeshHead = mesh_bxon.asset_data
 
         # Create Armature + Bones
-        if len(mesh_head.bone_poses) > 0:
+        if len(mesh_head.bones) > 0:
             amt_name = f"{mesh_file.name}_armature"
             amt = bpy.data.armatures.new(amt_name)
             amt_obj = bpy.data.objects.new(amt_name, amt)
@@ -54,10 +54,10 @@ def construct_meshes(pack_path: str, pack: Pack):
             bpy.ops.object.mode_set(mode="EDIT")
 
             safe_bones: list[str] = []
-            for k, bone in enumerate(mesh_head.bone_poses):
+            for k, bone in enumerate(mesh_head.bones):
                 transform = Matrix(bone.unknown_matrix_0)
 
-                if (bone.unknown_index == -1):
+                if (bone.node_index == -1):
                     head = transform @ Vector((0, 0, 0, 1))
                     tail = transform @ Vector((bone.length, 0, 0, 1))
                 else:
@@ -71,18 +71,18 @@ def construct_meshes(pack_path: str, pack: Pack):
                 safe_bones.append(bone.name)
             
             for k, edit_bone in enumerate(amt.edit_bones):
-                for bone in mesh_head.bones:
-                    if bone.name == edit_bone.name and bone.parent_bone_index != -1:
-                        parent_name = mesh_head.bones[bone.parent_bone_index].name
+                for node in mesh_head.nodes:
+                    if node.name == edit_bone.name and node.parent_index != -1:
+                        parent_name = mesh_head.nodes[node.parent_index].name
                         if parent_name in safe_bones:
                             edit_bone.parent = amt.edit_bones[parent_name]
                         break
 
             bpy.ops.object.mode_set(mode='POSE')
             for pose_bone in amt_obj.pose.bones:
-                for bone in mesh_head.bone_poses:
+                for bone in mesh_head.bones:
                     if bone.name == pose_bone.name:
-                        if bone.unknown_index != -1:
+                        if bone.node_index != -1:
                             transformMat = Matrix(bone.unknown_matrix_0)
                             pose_bone.matrix_basis = transformMat @ pose_bone.matrix_basis
                         break
@@ -125,7 +125,7 @@ def construct_meshes(pack_path: str, pack: Pack):
             b_mesh.update(calc_edges=True)
 
             # Create vertex groups for bones
-            for bone in mesh_head.bone_poses:
+            for bone in mesh_head.bones:
                 b_obj.vertex_groups.new(name=bone.name)
 
             # Assign colors
@@ -244,7 +244,7 @@ def construct_meshes(pack_path: str, pack: Pack):
             b_obj.rotation_euler = (math.radians(90),0,0)
 
             # Parent object to armature
-            if len(mesh_head.bone_poses) > 0:
+            if len(mesh_head.bones) > 0:
                 bpy.context.view_layer.objects.active = amt_obj
                 b_obj.select_set(True)
                 amt_obj.select_set(True)

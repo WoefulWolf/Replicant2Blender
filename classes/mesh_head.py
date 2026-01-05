@@ -7,17 +7,17 @@ from .common import VertexBufferType, read_string, DataOffset, align_relative
 
 
 @dataclass
-class Bone:
+class Node:
     name: str
-    parent_bone_index: int
+    parent_index: int
     rotation: tuple[float, float, float, float]
     scale: tuple[float, float, float]
     position: tuple[float, float, float]
 
     @classmethod
-    def from_stream(cls, stream: BinaryIO) -> 'Bone':
+    def from_stream(cls, stream: BinaryIO) -> 'Node':
         name_start_offset = stream.tell()
-        offset_to_name, parent_bone_index = struct.unpack('<Ii', stream.read(8))
+        offset_to_name, parent_index = struct.unpack('<Ii', stream.read(8))
 
         # Read rotation quaternion
         rotation = struct.unpack('<ffff', stream.read(16))
@@ -36,33 +36,33 @@ class Bone:
 
         return cls(
             name=name,
-            parent_bone_index=parent_bone_index,
+            parent_index=parent_index,
             rotation=rotation,
             scale=scale,
             position=position
         )
 
     @staticmethod
-    def write_list(writer, bones: list['Bone']) -> None:
+    def write_list(writer, nodes: list['Node']) -> None:
         from .binary_writer import BinaryWriter
 
         placeholders = []
 
-        for bone in bones:
+        for node in nodes:
             name_start_offset = writer.tell()
             name_placeholder = writer.write_placeholder('<I', name_start_offset)
-            writer.write_struct('<i', bone.parent_bone_index)
+            writer.write_struct('<i', node.parent_index)
 
             # Write rotation quaternion
-            writer.write_struct('<ffff', *bone.rotation)
+            writer.write_struct('<ffff', *node.rotation)
 
             # Write scale
-            writer.write_struct('<fff', *bone.scale)
+            writer.write_struct('<fff', *node.scale)
 
             # Write position
-            writer.write_struct('<fff', *bone.position)
+            writer.write_struct('<fff', *node.position)
 
-            placeholders.append((name_placeholder, bone.name))
+            placeholders.append((name_placeholder, node.name))
 
         for name_placeholder, name in placeholders:
             writer.align_min_padding(8, 8)
@@ -72,17 +72,17 @@ class Bone:
 
 
 @dataclass
-class BonePose:
+class Bone:
     name: str
-    unknown_index: int
+    node_index: int
     length: float
     unknown_matrix_0: list[list[float]]  # 16 floats
     unknown_matrix_1: list[list[float]]  # 16 floats
 
     @classmethod
-    def from_stream(cls, stream: BinaryIO) -> 'BonePose':
+    def from_stream(cls, stream: BinaryIO) -> 'Bone':
         name_start_offset = stream.tell()
-        offset_to_name, unknown_index, length = struct.unpack('<Iif', stream.read(12))
+        offset_to_name, node_index, length = struct.unpack('<Iif', stream.read(12))
 
         # Read matrices
         data = list(struct.unpack('<16f', stream.read(64)))
@@ -98,31 +98,31 @@ class BonePose:
 
         return cls(
             name=name,
-            unknown_index=unknown_index,
+            node_index=node_index,
             length=length,
             unknown_matrix_0=unknown_matrix_0,
             unknown_matrix_1=unknown_matrix_1
         )
 
     @staticmethod
-    def write_list(writer, bone_poses: list['BonePose']) -> None:
+    def write_list(writer, bones: list['Bone']) -> None:
         from .binary_writer import BinaryWriter
 
         placeholders = []
 
-        for bone_pose in bone_poses:
+        for bone in bones:
             name_start_offset = writer.tell()
             name_placeholder = writer.write_placeholder('<I', name_start_offset)
-            writer.write_struct('<if', bone_pose.unknown_index, bone_pose.length)
+            writer.write_struct('<if', bone.node_index, bone.length)
 
             # Write matrices (flatten 4x4 matrices)
-            matrix_0_flat = [val for row in bone_pose.unknown_matrix_0 for val in row]
+            matrix_0_flat = [val for row in bone.unknown_matrix_0 for val in row]
             writer.write_struct('<16f', *matrix_0_flat)
 
-            matrix_1_flat = [val for row in bone_pose.unknown_matrix_1 for val in row]
+            matrix_1_flat = [val for row in bone.unknown_matrix_1 for val in row]
             writer.write_struct('<16f', *matrix_1_flat)
 
-            placeholders.append((name_placeholder, bone_pose.name))
+            placeholders.append((name_placeholder, bone.name))
 
         for name_placeholder, name in placeholders:
             writer.align_min_padding(8, 8)
@@ -349,8 +349,8 @@ class tpGxMeshHead:
     total_index_buffers_size: int
     index_buffers_offset: DataOffset
     unknown_float: float
+    nodes: list[Node]
     bones: list[Bone]
-    bone_poses: list[BonePose]
     objects: list[Object]
     materials: list[Material]
     material_groups: list[MaterialGroup]
@@ -371,13 +371,13 @@ class tpGxMeshHead:
         unknown_float = struct.unpack('<f', stream.read(4))[0]
 
         # Read counts and offsets
+        node_count = struct.unpack('<I', stream.read(4))[0]
+        nodes_start_offset = stream.tell()
+        offset_to_nodes = struct.unpack('<I', stream.read(4))[0]
+
         bone_count = struct.unpack('<I', stream.read(4))[0]
         bones_start_offset = stream.tell()
         offset_to_bones = struct.unpack('<I', stream.read(4))[0]
-
-        bone_pose_count = struct.unpack('<I', stream.read(4))[0]
-        bone_poses_start_offset = stream.tell()
-        offset_to_bone_poses = struct.unpack('<I', stream.read(4))[0]
 
         object_count = struct.unpack('<I', stream.read(4))[0]
         objects_start_offset = stream.tell()
@@ -392,16 +392,16 @@ class tpGxMeshHead:
         offset_to_material_groups = struct.unpack('<I', stream.read(4))[0]
 
         # Parse bones
+        nodes = []
+        stream.seek(nodes_start_offset + offset_to_nodes)
+        for _ in range(node_count):
+            nodes.append(Node.from_stream(stream))
+
+        # Parse bone poses
         bones = []
         stream.seek(bones_start_offset + offset_to_bones)
         for _ in range(bone_count):
             bones.append(Bone.from_stream(stream))
-
-        # Parse bone poses
-        bone_poses = []
-        stream.seek(bone_poses_start_offset + offset_to_bone_poses)
-        for _ in range(bone_pose_count):
-            bone_poses.append(BonePose.from_stream(stream))
 
         # Parse objects
         objects = []
@@ -429,8 +429,8 @@ class tpGxMeshHead:
             total_index_buffers_size=total_index_buffers_size,
             index_buffers_offset=index_buffers_offset,
             unknown_float=unknown_float,
+            nodes=nodes,
             bones=bones,
-            bone_poses=bone_poses,
             objects=objects,
             materials=materials,
             material_groups=material_groups
@@ -457,13 +457,13 @@ class tpGxMeshHead:
         writer.write_struct('<f', self.unknown_float)
 
         # Write counts and offset placeholders
+        writer.write_struct('<I', len(self.nodes))
+        nodes_start_offset = writer.tell()
+        nodes_placeholder = writer.write_placeholder('<I', nodes_start_offset)
+
         writer.write_struct('<I', len(self.bones))
         bones_start_offset = writer.tell()
         bones_placeholder = writer.write_placeholder('<I', bones_start_offset)
-
-        writer.write_struct('<I', len(self.bone_poses))
-        bone_poses_start_offset = writer.tell()
-        bone_poses_placeholder = writer.write_placeholder('<I', bone_poses_start_offset)
 
         writer.write_struct('<I', len(self.objects))
         objects_start_offset = writer.tell()
@@ -477,17 +477,17 @@ class tpGxMeshHead:
         material_groups_start_offset = writer.tell()
         material_groups_placeholder = writer.write_placeholder('<I', material_groups_start_offset)
 
-        # Write bones
+        # Write nodes
+        writer.align_min_padding(8, 8)
+        nodes_pos = writer.tell()
+        writer.patch_placeholder(nodes_placeholder, nodes_pos)
+        Node.write_list(writer, self.nodes)
+
+        # Write bone poses
         writer.align_min_padding(8, 8)
         bones_pos = writer.tell()
         writer.patch_placeholder(bones_placeholder, bones_pos)
         Bone.write_list(writer, self.bones)
-
-        # Write bone poses
-        writer.align_min_padding(8, 8)
-        bone_poses_pos = writer.tell()
-        writer.patch_placeholder(bone_poses_placeholder, bone_poses_pos)
-        BonePose.write_list(writer, self.bone_poses)
 
         # Write objects
         writer.align_min_padding(8, 8)

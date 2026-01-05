@@ -140,6 +140,7 @@ class EXPORT_OT_replicant_pack(Operator, ExportHelper):
         return ExportHelper.invoke(self, context, event)
 
     def execute(self, context):
+        bpy.ops.object.mode_set(mode='OBJECT')
         if self.type == 'MESH':
             return mesh_export.export(self)
         elif self.type == 'TEXTURE':
