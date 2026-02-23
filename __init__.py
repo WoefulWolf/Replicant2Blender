@@ -16,7 +16,7 @@ class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
     bl_options = {'PRESET', "REGISTER", "UNDO"}
     files : bpy.props.CollectionProperty(name="File Path", type=OperatorFileListElement)
     directory: bpy.props.StringProperty(subtype='DIR_PATH')
-    extract_textures: bpy.props.BoolProperty(name="Extract Textures", description="This automatically extracts and tries to convert textures to PNG", default=True)
+    extract_textures: bpy.props.BoolProperty(name="Extract Textures", description="This automatically extracts and tries to convert textures to PNG/TIF", default=True)
     construct_materials: bpy.props.BoolProperty(name="Construct Materials", description="This automatically sets up materials with the appropriate textures (Requires the user to have extracted the textures at least once before)", default=True)
     only_extract_textures: bpy.props.BoolProperty(name="Only Extract Textures", description="This can be used to simply extract the textures from a PACK containing some, nothing else will be done", default=False)
 

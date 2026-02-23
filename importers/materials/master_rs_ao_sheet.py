@@ -1,8 +1,9 @@
 import bpy
 
+from ...util import generate_converted_texture_paths
 from ...classes.material_instance import tpGxMaterialInstanceV2
 
-from .nodes import constant_buffer_value, dx_to_gl_normal, grid_location, texture_sampler
+from .nodes import constant_buffer_value, grid_location
 
 def master_rs_ao_sheet(textures_dir: str, material: bpy.types.Material, instance: tpGxMaterialInstanceV2):
     # Renamed in 5.0
@@ -18,11 +19,7 @@ def master_rs_ao_sheet(textures_dir: str, material: bpy.types.Material, instance
     links = material.node_tree.links
     material.blend_method = 'BLEND'
 
-    converted_textures: list[str] = []
-    for texture in instance.texture_samplers:
-        texture_filename_base = texture.texture_name.replace(".rtex", "")
-        texture_filename = texture_filename_base + ".png"
-        converted_textures.append(texture_filename)
+    converted_textures = generate_converted_texture_paths(instance.texture_samplers)
 
     # gColorMultiply
     g_color_multiply = constant_buffer_value(material, nodes, instance, "CbAOSheet", "gColorMultiply")

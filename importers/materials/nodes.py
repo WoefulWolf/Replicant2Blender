@@ -77,8 +77,7 @@ def constant_buffer_value(material: Material, nodes: Nodes, instance: tpGxMateri
     return None
 
 
-
-def grid_location(x: int, y: int):
+def grid_location(x: int | float, y: int | float):
     return (x * 300, y * -80)
 
 def if_nz(type: str="Float") -> NodeTree:
@@ -271,5 +270,77 @@ def invert_channel(channel: str="Green") -> NodeTree:
     links.new(subtract_node.outputs[0], cmb_col_shader.inputs[channel_index])
 	
     links.new(cmb_col_shader.outputs[comRGB_output], group_output.inputs['Color'])
+
+    return node_group
+
+def cast_shadows() -> NodeTree:
+    name = 'Cast Shadows'
+    if name in bpy.data.node_groups:
+        return bpy.data.node_groups[name]
+
+    node_group = bpy.data.node_groups.new(name, 'ShaderNodeTree')
+    node_group.color_tag = 'CONVERTER'
+
+    interface = node_group.interface
+    interface.new_socket(
+        name='Value',
+        in_out='INPUT',
+        socket_type='NodeSocketFloat'
+    )
+    interface.new_socket(
+        name='BSDF',
+        in_out='INPUT',
+        socket_type='NodeSocketShader'
+    )
+    interface.new_socket(
+        name='Alpha',
+        in_out='INPUT',
+        socket_type='NodeSocketFloat'
+    )
+    interface.new_socket(
+        name='Surface',
+        in_out='OUTPUT',
+        socket_type='NodeSocketShader'
+    )
+
+    nodes = node_group.nodes
+    links = node_group.links
+    nodes.clear()
+
+    group_input = nodes.new('NodeGroupInput')
+    group_input.location = grid_location(0, 0)
+    group_output = nodes.new('NodeGroupOutput')
+    group_output.location = grid_location(5, 0)
+
+    light_path_node = nodes.new(type='ShaderNodeLightPath')
+    light_path_node.location = grid_location(0, -1)
+    light_path_node.hide = True
+    
+    if_nz_node = nodes.new('ShaderNodeGroup')
+    if_nz_node.node_tree = if_nz()
+    if_nz_node.location = grid_location(1, 1)
+    if_nz_node.hide = True
+    if_nz_node.inputs['False'].default_value = 0.0
+    links.new(group_input.outputs['Value'], if_nz_node.inputs["Value"])
+    links.new(group_input.outputs['Alpha'], if_nz_node.inputs["True"])
+
+    subtract_node = nodes.new(type='ShaderNodeMath')
+    subtract_node.location = grid_location(2, 1)
+    subtract_node.hide = True
+    subtract_node.operation = 'SUBTRACT'
+    subtract_node.inputs[0].default_value = 1.0
+    links.new(if_nz_node.outputs["Value"], subtract_node.inputs[1])
+
+    transparent_node = nodes.new(type='ShaderNodeBsdfTransparent')
+    transparent_node.location = grid_location(2, 1)
+    links.new(subtract_node.outputs["Value"], transparent_node.inputs['Color'])
+
+    mix_node = nodes.new(type='ShaderNodeMixShader')
+    mix_node.location = grid_location(3, 1)
+    links.new(light_path_node.outputs["Is Shadow Ray"], mix_node.inputs['Factor'])
+    links.new(group_input.outputs['BSDF'], mix_node.inputs[1])
+    links.new(transparent_node.outputs['BSDF'], mix_node.inputs[2])
+    
+    links.new(mix_node.outputs['Shader'], group_output.inputs["Surface"])
 
     return node_group

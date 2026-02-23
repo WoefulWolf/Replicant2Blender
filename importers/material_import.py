@@ -2,7 +2,6 @@ import os
 import bpy
 from bpy.types import Material
 
-
 from ..classes.material_instance import tpGxMaterialInstanceV2
 from ..classes.asset_package import tpXonAssetHeader
 from ..classes.tex_head import tpGxTexHead, ResourceDimension, ResourceFormat
@@ -98,6 +97,18 @@ def setup_custom_ui_values(material: Material, material_instance: tpGxMaterialIn
     material.replicant_flags.cast_shadows = not material_instance.flags[0] and material_instance.flags[1]
     material.replicant_flags.draw_backfaces = material_instance.flags[4] and material_instance.flags[5]
     material.replicant_flags.enable_alpha = material_instance.flags[8] and material_instance.flags[9]
+
+    material.use_backface_culling = not material.replicant_flags.draw_backfaces
+    material.use_backface_culling_lightprobe_volume = not material.replicant_flags.draw_backfaces
+    material.use_backface_culling_shadow = not material.replicant_flags.draw_backfaces
+
+    enable_alpha = find_node_by_label(material, "Enable Alpha")
+    if enable_alpha is not None:
+        enable_alpha.inputs["Value"].default_value = int(material.replicant_flags.enable_alpha)
+
+    cast_shadows = find_node_by_label(material, "Cast Shadows")
+    if cast_shadows is not None:
+        cast_shadows.inputs["Value"].default_value = int(material.replicant_flags.cast_shadows)
 
     for constant_buffer in material_instance.constant_buffers:
         cb = material.replicant_constant_buffers.add()
@@ -330,6 +341,8 @@ def extract_textures(pack_dir: str, texture_packs: list[Pack]):
                     data = f.read()
                 dds = DDS.from_bytes(data)
                 image = dds.to_image()
+                if image.dtype == np.float32:
+                    out_path = out_path.replace(".png", ".tif") # Use .tif for HDR
                 imageio.imwrite(out_path, image)
             except Exception as e:
                 log.e(f"Failed to convert {texture_path}! Error: {e}")

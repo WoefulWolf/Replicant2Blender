@@ -1,4 +1,5 @@
 #encoding = utf-8
+from nt import replace
 import os
 import struct
 from typing import Tuple
@@ -60,12 +61,31 @@ def readFloatX3(f) -> Tuple[float, float, float]:
 def readFloatX4(f) -> Tuple[float, float, float, float]:
 	return struct.unpack("<ffff", f.read(16))
 
-def search_texture(textures_dir: str, texture_filename: str) -> str | None:
-    for root, dirs, files in os.walk(textures_dir):
-        for file in files:
-            if file == texture_filename:
-                return os.path.join(root, file)
+def find_node_by_label(material: Material, label: str):
+    """Find a node by the label string"""
+    if not material or not material.use_nodes:
+        return None
+    for node in material.node_tree.nodes:
+        if node.label == label:
+            return node
     return None
+
+def generate_converted_texture_paths(samplers) -> list[str]:
+	converted_textures: list[str] = []
+	for texture in samplers:
+		texture_filename_base = texture.texture_name.replace(".rtex", "")
+		texture_filename_png = texture_filename_base + ".png"
+		converted_textures.append(texture_filename_png)
+	return converted_textures
+
+def search_texture(textures_dir: str, texture_filename: str) -> str | None:
+	for root, dirs, files in os.walk(textures_dir):
+		for file in files:
+			if file == texture_filename:
+				return os.path.join(root, file)
+			elif file == texture_filename.replace(".png", ".tif"):	# Fallback to .tif if .png not found (probably HDR)
+				return os.path.join(root, file)
+	return None
 
 def show_blender_system_console():
 	import os

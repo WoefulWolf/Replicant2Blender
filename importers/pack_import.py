@@ -74,7 +74,7 @@ def main(pack_path: str, do_extract_textures: bool, do_construct_materials: bool
                     else:
                         if (texture_pack_path not in failed_texture_packs):
                             failed_texture_packs.append(texture_pack_path)
-                            log.w(f"Failed to find texture PACK file: {texture_pack_filename}")
+                            log.w(f"Failed to find texture PACK import file: {texture_pack_filename}")
                         continue
 
                 if (texture_pack_path not in imported_texture_packs):

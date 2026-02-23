@@ -3,7 +3,9 @@ from typing import Callable
 import bpy
 import os
 
-from bpy.types import UILayout
+from bpy.types import Material, UILayout
+
+from ..util import find_node_by_label
 
 dxgi_format_strings = ['UNKNOWN', 'R32G32B32A32_TYPELESS', 'R32G32B32A32_FLOAT', 'R32G32B32A32_UINT', 'R32G32B32A32_SINT', 'R32G32B32_TYPELESS', 'R32G32B32_FLOAT', 'R32G32B32_UINT', 'R32G32B32_SINT', 'R16G16B16A16_TYPELESS', 'R16G16B16A16_FLOAT', 'R16G16B16A16_UNORM', 'R16G16B16A16_UINT', 'R16G16B16A16_SNORM', 'R16G16B16A16_SINT', 'R32G32_TYPELESS', 'R32G32_FLOAT', 'R32G32_UINT', 'R32G32_SINT', 'R32G8X24_TYPELESS', 'D32_FLOAT_S8X24_UINT', 'R32_FLOAT_X8X24_TYPELESS', 'X32_TYPELESS_G8X24_UINT', 'R10G10B10A2_TYPELESS', 'R10G10B10A2_UNORM', 'R10G10B10A2_UINT', 'R11G11B10_FLOAT', 'R8G8B8A8_TYPELESS', 'R8G8B8A8_UNORM', 'R8G8B8A8_UNORM_SRGB', 'R8G8B8A8_UINT', 'R8G8B8A8_SNORM', 'R8G8B8A8_SINT', 'R16G16_TYPELESS', 'R16G16_FLOAT', 'R16G16_UNORM', 'R16G16_UINT', 'R16G16_SNORM', 'R16G16_SINT', 'R32_TYPELESS', 'D32_FLOAT', 'R32_FLOAT', 'R32_UINT', 'R32_SINT', 'R24G8_TYPELESS', 'D24_UNORM_S8_UINT', 'R24_UNORM_X8_TYPELESS', 'X24_TYPELESS_G8_UINT', 'R8G8_TYPELESS', 'R8G8_UNORM', 'R8G8_UINT', 'R8G8_SNORM', 'R8G8_SINT', 'R16_TYPELESS', 'R16_FLOAT', 'D16_UNORM', 'R16_UNORM', 'R16_UINT', 'R16_SNORM', 'R16_SINT', 'R8_TYPELESS', 'R8_UNORM', 'R8_UINT', 'R8_SNORM', 'R8_SINT', 'A8_UNORM', 'R1_UNORM', 'R9G9B9E5_SHAREDEXP', 'R8G8_B8G8_UNORM', 'G8R8_G8B8_UNORM', 'BC1_TYPELESS', 'BC1_UNORM', 'BC1_UNORM_SRGB', 'BC2_TYPELESS', 'BC2_UNORM', 'BC2_UNORM_SRGB', 'BC3_TYPELESS', 'BC3_UNORM', 'BC3_UNORM_SRGB', 'BC4_TYPELESS', 'BC4_UNORM', 'BC4_SNORM', 'BC5_TYPELESS', 'BC5_UNORM', 'BC5_SNORM', 'B5G6R5_UNORM', 'B5G5R5A1_UNORM', 'B8G8R8A8_UNORM', 'B8G8R8X8_UNORM', 'R10G10B10_XR_BIAS_A2_UNORM', 'B8G8R8A8_TYPELESS', 'B8G8R8A8_UNORM_SRGB', 'B8G8R8X8_TYPELESS', 'B8G8R8X8_UNORM_SRGB', 'BC6H_TYPELESS', 'BC6H_UF16', 'BC6H_SF16', 'BC7_TYPELESS', 'BC7_UNORM', 'BC7_UNORM_SRGB', 'AYUV', 'Y410', 'Y416', 'NV12', 'P010', 'P016', 'OPAQUE_420', 'YUY2', 'Y210', 'Y216', 'NV11', 'AI44', 'IA44', 'P8', 'A8P8', 'B4G4R4A4_UNORM']
 
@@ -350,21 +352,44 @@ def mip_maps_update(self, context):
                 sampler.mip_maps != new_value):
                 sampler.mip_maps = new_value
 
+def flags_update(self, context):
+    """Update callback when material flags update"""
+    if context.active_object is None:
+        return
+    material: Material = context.active_object.active_material
+    if material is None:
+        return
+    material.use_backface_culling = not self.draw_backfaces
+    material.use_backface_culling_lightprobe_volume = not self.draw_backfaces
+    material.use_backface_culling_shadow = not self.draw_backfaces
+
+    enable_alpha = find_node_by_label(material, "Enable Alpha")
+    if enable_alpha is not None:
+        enable_alpha.inputs["Value"].default_value = int(self.enable_alpha)
+
+    cast_shadows = find_node_by_label(material, "Cast Shadows")
+    if cast_shadows is not None:
+        cast_shadows.inputs["Value"].default_value = int(self.cast_shadows)
+
+
 class MaterialFlags(bpy.types.PropertyGroup):
     cast_shadows: bpy.props.BoolProperty(
         name="Cast Shadows",
         description="Enable shadow casting on this material",
         default=True,
+        update=flags_update
     )
     draw_backfaces: bpy.props.BoolProperty(
         name="Draw Backfaces",
         description="Enables the drawing of backfaces",
         default=False,
+        update=flags_update
     )
     enable_alpha: bpy.props.BoolProperty(
         name="Enable Alpha",
         description="Enables texture alpha tests",
         default=False,
+        update=flags_update
     )
 
 class TextureSampler(bpy.types.PropertyGroup):

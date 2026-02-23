@@ -1,8 +1,8 @@
 import bpy
 
+from ...util import generate_converted_texture_paths
 from ...classes.material_instance import tpGxMaterialInstanceV2
 
-from ...util import search_texture, log
 from .nodes import constant_buffer_value, dx_to_gl_normal, grid_location, texture_sampler
 
 def master_rs_layer4(textures_dir: str, material: bpy.types.Material, instance: tpGxMaterialInstanceV2):
@@ -19,11 +19,7 @@ def master_rs_layer4(textures_dir: str, material: bpy.types.Material, instance: 
     links = material.node_tree.links
     material.blend_method = 'CLIP'
 
-    converted_textures: list[str] = []
-    for texture in instance.texture_samplers:
-        texture_filename_base = texture.texture_name.replace(".rtex", "")
-        texture_filename = texture_filename_base + ".png"
-        converted_textures.append(texture_filename)
+    converted_textures = generate_converted_texture_paths(instance.texture_samplers)
 
     # UV Map 1
     uv1 = nodes.new(type='ShaderNodeUVMap')

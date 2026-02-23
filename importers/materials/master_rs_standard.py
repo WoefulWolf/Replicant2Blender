@@ -1,8 +1,9 @@
 import bpy
 
+from ...util import generate_converted_texture_paths
 from ...classes.material_instance import tpGxMaterialInstanceV2
 
-from .nodes import constant_buffer_value, dx_to_gl_normal, grid_location, texture_sampler
+from .nodes import cast_shadows, constant_buffer_value, dx_to_gl_normal, grid_location, if_nz, texture_sampler
 
 def master_rs_standard(textures_dir: str, material: bpy.types.Material, instance: tpGxMaterialInstanceV2):
     # Renamed in 5.0
@@ -18,11 +19,7 @@ def master_rs_standard(textures_dir: str, material: bpy.types.Material, instance
     links = material.node_tree.links
     material.blend_method = 'CLIP'
 
-    converted_textures: list[str] = []
-    for texture in instance.texture_samplers:
-        texture_filename_base = texture.texture_name.replace(".rtex", "")
-        texture_filename = texture_filename_base + ".png"
-        converted_textures.append(texture_filename)
+    converted_textures = generate_converted_texture_paths(instance.texture_samplers)
 
     # UV Map
     uv0 = nodes.new(type='ShaderNodeUVMap')
@@ -95,16 +92,35 @@ def master_rs_standard(textures_dir: str, material: bpy.types.Material, instance
     normal_map.hide = True
     links.new(tex_normal_dx_gl.outputs[0], normal_map.inputs['Color'])
 
+    # Enable Alpha
+    enable_alpha = nodes.new('ShaderNodeGroup')
+    enable_alpha.node_tree = if_nz()
+    enable_alpha.location = grid_location(2, 1.5)
+    enable_alpha.hide = True
+    enable_alpha.label = "Enable Alpha"
+    enable_alpha.inputs['False'].default_value = 1.0
+    links.new(tex_base_color.outputs['Alpha'], enable_alpha.inputs['True'])
+
     # Principled BSDF
     principled = nodes.new(type='ShaderNodeBsdfPrincipled')
     principled.location = grid_location(3, 0)
     links.new(tex_orm_ao_multiply.outputs['Color'], principled.inputs['Base Color'])
-    links.new(tex_base_color.outputs['Alpha'], principled.inputs['Alpha'])
+    links.new(enable_alpha.outputs['Value'], principled.inputs['Alpha'])
     links.new(tex_orm_sep.outputs[1], principled.inputs['Roughness'])
     links.new(tex_orm_sep.outputs[2], principled.inputs['Metallic'])
     links.new(normal_map.outputs['Normal'], principled.inputs['Normal'])
 
+    # Cast Shadows
+    cast_shadows_node = nodes.new('ShaderNodeGroup')
+    cast_shadows_node.node_tree = cast_shadows()
+    cast_shadows_node.location = grid_location(4, 0.5)
+    cast_shadows_node.hide = True
+    cast_shadows_node.label = "Cast Shadows"
+    cast_shadows_node.inputs['Value'].default_value = 1.0
+    links.new(enable_alpha.outputs['Value'], cast_shadows_node.inputs['Alpha'])
+    links.new(principled.outputs['BSDF'], cast_shadows_node.inputs['BSDF'])
+
     # Output
     output = nodes.new(type='ShaderNodeOutputMaterial')
-    output.location = grid_location(4, 0)
-    links.new(principled.outputs['BSDF'], output.inputs['Surface'])
+    output.location = grid_location(4.5, 0)
+    links.new(cast_shadows_node.outputs['Surface'], output.inputs['Surface'])
