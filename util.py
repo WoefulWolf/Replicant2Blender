@@ -179,7 +179,9 @@ def label_multiline(context: Context, parent: UILayout, text: str):
 	wrapper = textwrap.TextWrapper(width=chars)
 	text_lines = wrapper.wrap(text=text)
 	for text_line in text_lines:
-		parent.label(text=text_line)
+		row = parent.row()
+		row.scale_y = 0.7 * context.preferences.view.ui_scale
+		row.label(text=text_line)
 
 def get_export_collections() -> dict[Collection, list[Collection]]:
 	out: dict[Collection, list[Collection]] = {}

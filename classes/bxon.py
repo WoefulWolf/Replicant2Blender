@@ -49,6 +49,9 @@ class BXON:
         elif asset_type == "tpGxTexHead":
             from .tex_head import tpGxTexHead
             asset_data = tpGxTexHead.from_stream(stream)
+        elif asset_type == "tpArchiveFileParam":
+            from .tp_archive_file_param import TpArchiveFileParam
+            asset_data = TpArchiveFileParam.from_stream(stream)
         else:
             return None
         # Other asset types can be added here (tpTandaFontSdfParam, etc.)

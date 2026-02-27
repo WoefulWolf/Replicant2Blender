@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "replicant2blender"
-version = "0.13.0"
+version = "0.14.0"
 name = "Replicant2Blender (NieR Replicant ver.1.2247... Pack Importer/Exporter)"
 tagline = "Import NieR Replicant Pack"
 maintainer = "Woeful_Wolf"

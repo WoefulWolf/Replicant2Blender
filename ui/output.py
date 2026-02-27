@@ -4,7 +4,7 @@ import bpy
 from bpy.props import FloatProperty, StringProperty, BoolProperty, CollectionProperty, PointerProperty
 from bpy.types import Material, UILayout
 
-from ..util import get_export_collections, get_export_collections_materials
+from ..util import get_export_collections, get_export_collections_materials, label_multiline
 
 class PreprocessingSteps(bpy.types.PropertyGroup):
     triangulate: bpy.props.BoolProperty(
@@ -105,6 +105,28 @@ class OUTPUT_OT_rename_texture_pack(bpy.types.Operator):
         self.report({'INFO'}, f"Updated {updated_count} sampler(s)")
         return {'FINISHED'}
 
+class OUTPUT_OT_toggle_archive_directory_expand(bpy.types.Operator):
+    """Toggle directory directory expand/collapse state"""
+    bl_idname = "output.toggle_archive_directory_expand"
+    bl_label = "Toggle Archive Directory"
+    bl_options = {'INTERNAL'}
+
+    archive_directory: StringProperty(name="Archive Directory")
+
+    def execute(self, context):
+        expanded_directories = set(context.scene.replicant_expanded_archive_directories.split(',')) if context.scene.replicant_expanded_archive_directories else set()
+
+        if self.archive_directory in expanded_directories:
+            expanded_directories.remove(self.archive_directory)
+        else:
+            expanded_directories.add(self.archive_directory)
+
+        # Remove empty strings from set
+        expanded_directories.discard('')
+
+        context.scene.replicant_expanded_archive_directories = ','.join(expanded_directories)
+        return {'FINISHED'}
+
 class OUTPUT_PT_replicant(bpy.types.Panel):
     bl_label: str = "NieR Replicant ver.1.2247... Export"
     bl_idname: str = "OUTPUT_PT_replicant"
@@ -176,6 +198,7 @@ class OUTPUT_PT_replicant(bpy.types.Panel):
         mesh_export(layout, context)
         material_export(layout, context)
         texture_export(layout, context)
+        archive_export(layout, context)
 
 def mesh_export(layout: UILayout, context: Context):
     box = layout.box()
@@ -367,12 +390,105 @@ def texture_export(layout: UILayout, context: Context):
         op.type = 'TEXTURE'
         op.texture_pack = pack
 
+def lunar_tear_footer(context, parent: UILayout):
+    parent.separator(type='LINE')
+    label_multiline(context, parent, "The Replicant2Blender archive exporting functionality is ported from the original UnsealedVerses, which is part of Lunar Tear.")
+    row = parent.row()
+    op = row.operator("replicant.open_url", text="Check out Lunar Tear here")
+    op.url = "https://github.com/ifa-ifa/Lunar-Tear/"
+
+def archive_export(layout: UILayout, context: Context):
+    box = layout.box()
+    header = box.row(align=True)
+    header.alignment = 'LEFT'
+    header.prop(context.scene, "replicant_show_archive_export",
+                text="",
+                icon='TRIA_DOWN' if context.scene.replicant_show_archive_export else 'TRIA_RIGHT',
+                icon_only=True, emboss=False)
+    header.prop(context.scene, "replicant_show_archive_export",
+                text="UnsealedVerses - Archive Export",
+                icon='OUTLINER_COLLECTION',
+                emboss=False, toggle=True)
+
+    if not context.scene.replicant_show_archive_export:
+        return
+
+    box = box.box()
+    box.prop(context.scene, "replicant_archive_root")
+
+    if context.scene.replicant_archive_root == "":
+        lunar_tear_footer(context, box)
+        return
+
+    if not os.path.exists(context.scene.replicant_archive_root) or not os.path.isdir(context.scene.replicant_archive_root):
+        box.label(text="None found", icon='INFO')
+        lunar_tear_footer(context, box)
+        return
+
+    archive_directories: dict[str, list[str]] = {}
+    for root, dirs, files in os.walk(context.scene.replicant_archive_root):
+        for file in files:
+            full_path = os.path.join(root, file)
+            relative_path = os.path.relpath(full_path, context.scene.replicant_archive_root)
+            head, tail = os.path.split(relative_path)
+            if not head:
+                head = "."
+            archive_directories.setdefault(head, []).append(tail)
+
+    if not archive_directories:
+        box = box.box()
+        box.label(text="None found", icon='INFO')
+        lunar_tear_footer(context, box)
+        return
+
+    # Get set of expanded dirs
+    expanded_dirs = set(context.scene.replicant_expanded_archive_directories.split(',')) if context.scene.replicant_expanded_archive_directories else set()
+
+    for dir in archive_directories.keys():
+        dir_box = box.box()
+
+        # Dir header with collapse/expand toggle and dir name
+        dir_header = dir_box.row(align=True)
+        dir_header.alignment = 'LEFT'
+        is_expanded = dir in expanded_dirs
+
+        # Toggle expand/collapse
+        icon = 'TRIA_DOWN' if is_expanded else 'TRIA_RIGHT'
+        toggle_op = dir_header.operator("output.toggle_archive_directory_expand", text="", icon=icon, emboss=False)
+        toggle_op.archive_directory = dir
+
+        dir_header.label(text=dir, icon='FILE_FOLDER')
+
+        if not is_expanded:
+            continue
+
+        files_box = dir_box.box()
+        for file in archive_directories[dir]:
+            files_box.label(text=file, icon='DOT')
+
+    # Export button
+    row = box.row()
+    row.scale_y = 2.0
+    op = row.operator("export.replicant_archive", text="Export Archive", icon='EXPORT')
+    label_multiline(context, box, "The Replicant2Blender archive exporting functionality is ported from the original UnsealedVerses, which is part of Lunar Tear.")
+    row = box.row()
+    op = row.operator("replicant.open_url", text="Check out Lunar Tear here")
+    op.url = "https://github.com/ifa-ifa/Lunar-Tear/"
+
 
 def register():
     # Register operators
+    bpy.utils.register_class(OUTPUT_OT_toggle_archive_directory_expand)
     bpy.utils.register_class(OUTPUT_OT_toggle_texture_pack_expand)
     bpy.utils.register_class(OUTPUT_OT_rename_texture_pack)
     bpy.utils.register_class(PreprocessingSteps)
+
+    bpy.types.Scene.replicant_archive_root = StringProperty(
+        name="Archive Root",
+        description="Path to the archive root",
+        default="",
+        subtype='FILE_PATH'
+    )
 
     bpy.types.Scene.replicant_preprocessing_steps = bpy.props.PointerProperty(type=PreprocessingSteps)
 
@@ -392,6 +508,10 @@ def register():
         name="Show Texture PACK Export",
         default=False
     )
+    bpy.types.Scene.replicant_show_archive_export = bpy.props.BoolProperty(
+        name="Show Archive Export",
+        default=False
+    )
 
     bpy.types.Collection.replicant_original_mesh_pack = StringProperty(
         name="Original Mesh PACK",
@@ -409,10 +529,15 @@ def register():
         default=False,
     )
 
-    # Property to store which texture packs are expanded
     bpy.types.Scene.replicant_expanded_texture_packs = StringProperty(
         name="Expanded Texture Packs",
         description="Comma-separated list of expanded texture pack paths",
+        default=""
+    )
+
+    bpy.types.Scene.replicant_expanded_archive_directories = StringProperty(
+        name="Expanded Archive Directories",
+        description="Comma-separated list of expanded archive directory paths",
         default=""
     )
 
@@ -428,14 +553,17 @@ def unregister():
     bpy.utils.unregister_class(OUTPUT_PT_replicant)
 
     del bpy.types.Scene.replicant_preprocessing_steps
+    del bpy.types.Scene.replicant_show_archive_export
     del bpy.types.Scene.replicant_show_mesh_export
     del bpy.types.Scene.replicant_show_material_export
     del bpy.types.Scene.replicant_show_texture_export
     del bpy.types.Collection.replicant_original_mesh_pack
     del bpy.types.Scene.replicant_expanded_texture_packs
+    del bpy.types.Scene.replicant_archive_root
     del bpy.types.Collection.replicant_export
 
     # Unregister operators
     bpy.utils.unregister_class(PreprocessingSteps)
     bpy.utils.unregister_class(OUTPUT_OT_rename_texture_pack)
     bpy.utils.unregister_class(OUTPUT_OT_toggle_texture_pack_expand)
+    bpy.utils.unregister_class(OUTPUT_OT_toggle_archive_directory_expand)
