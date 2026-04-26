@@ -407,6 +407,31 @@ def export(operator):
 
                 mesh_head.material_groups = material_groups
 
+                # Recompute the mesh-level AABB as the union of every material group's bbox.
+                # The original from disk is stale once the user has reshaped the mesh, which can
+                # cause the engine to cull the model when the camera is outside the old bounds.
+                if material_groups:
+                    bbox_min = (
+                        min(mg.bounding_box_coord1[0] for mg in material_groups),
+                        min(mg.bounding_box_coord1[1] for mg in material_groups),
+                        min(mg.bounding_box_coord1[2] for mg in material_groups),
+                    )
+                    bbox_max = (
+                        max(mg.bounding_box_coord2[0] for mg in material_groups),
+                        max(mg.bounding_box_coord2[1] for mg in material_groups),
+                        max(mg.bounding_box_coord2[2] for mg in material_groups),
+                    )
+                    mesh_head.bounding_box_coord1 = bbox_min
+                    mesh_head.bounding_box_coord2 = bbox_max
+
+                # Recompute each object's cumulative offset into the file's global index buffer.
+                # Iterates all objects (including any kept from the original pack) since changing
+                # one object's index_count shifts every subsequent object's start.
+                running_index_offset = 0
+                for obj in mesh_head.objects:
+                    obj.indices_start_offset = running_index_offset
+                    running_index_offset += obj.index_count
+
             # Remove dropped slots from pack.files and renumber remaining file_data.file_index
             if dropped_file_indices:
                 pack.files_data = [fd for fd in pack.files_data if fd.file_index not in dropped_file_indices]
