@@ -6,7 +6,7 @@ from bpy.types import Operator, OperatorFileListElement
 from .importers import pack_import
 from .exporters import pack_export, archive_export
 from .ui import output, material
-from .operators import rip_mesh_uv_islands, triangulate, open_url
+from .operators import rip_mesh_uv_islands, triangulate, apply_modifiers, open_url
 from .util import log, show_blender_system_console
 
 class ImportReplicantMeshPack(bpy.types.Operator, ImportHelper):
@@ -59,6 +59,7 @@ def register():
     archive_export.register()
     triangulate.register()
     rip_mesh_uv_islands.register()
+    apply_modifiers.register()
     open_url.register()
     output.register()
     material.register()
@@ -69,6 +70,7 @@ def unregister():
     material.unregister()
     output.unregister()
     open_url.unregister()
+    apply_modifiers.unregister()
     rip_mesh_uv_islands.unregister()
     triangulate.unregister()
     archive_export.unregister()

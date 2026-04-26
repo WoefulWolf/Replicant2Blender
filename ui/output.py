@@ -7,6 +7,12 @@ from bpy.types import Material, UILayout
 from ..util import get_export_collections, get_export_collections_materials, label_multiline
 
 class PreprocessingSteps(bpy.types.PropertyGroup):
+    apply_modifiers: bpy.props.BoolProperty(
+        name="Apply Modifiers",
+        description="Apply all non-armature modifiers (e.g. Decimate, Mirror) on each mesh in stack order before other preprocessing",
+        default=True,
+    )
+
     triangulate: bpy.props.BoolProperty(
         name="Triangulate Meshes",
         description="Enable automated triangulation of meshes",
@@ -225,6 +231,7 @@ def mesh_export(layout: UILayout, context: Context):
     pp_box = box.box()
     pp_box.label(text="Non-Destructive Preprocessing", icon='PRESET')
     row = pp_box.row(align=True)
+    row.prop(context.scene.replicant_preprocessing_steps, "apply_modifiers", icon='MODIFIER')
     row.prop(context.scene.replicant_preprocessing_steps, "triangulate", icon='MOD_TRIANGULATE')
     row.prop(context.scene.replicant_preprocessing_steps, "rip_mesh_uv_islands", icon='UV_ISLANDSEL')
 

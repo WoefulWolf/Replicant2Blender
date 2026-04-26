@@ -1,7 +1,7 @@
 from itertools import chain
 import os
 import numpy as np
-import bpy, time
+import bpy, bmesh, time
 from dataclasses import dataclass, field
 from bpy.types import Collection, Material, Mesh, Object
 from contextlib import contextmanager
@@ -18,6 +18,7 @@ from ..classes.asset_package import tpXonAssetHeader
 from ..util import fnv1, get_collection_objects, get_export_collections, log
 from ..operators.triangulate import triangulate_mesh
 from ..operators.rip_mesh_uv_islands import rip_mesh_uv_islands
+from ..operators.apply_modifiers import apply_modifiers
 
 def get_all_layer_collections_recursive(layer_collection):
     """Recursively get all layer collections including nested ones."""
@@ -203,6 +204,15 @@ def preprocess_mesh_for_export(obj: Object):
     # Get the Blender context
     context = bpy.context
 
+    if context.scene.replicant_preprocessing_steps.apply_modifiers:
+        success, message, mod_count = apply_modifiers(obj, context)
+        if mod_count == 0:
+            log.d(f"  No modifiers to apply")
+        elif success:
+            log.d(f"  {message}")
+        else:
+            log.w(f"  {message}")
+
     if context.scene.replicant_preprocessing_steps.rip_mesh_uv_islands:
         success, message, seam_count = rip_mesh_uv_islands(obj, context)
         if seam_count == 0:
@@ -220,6 +230,24 @@ def preprocess_mesh_for_export(obj: Object):
             log.d(f"  {message}")
         else:
             log.w(f"  Failed to triangulate {obj.name}: {message}")
+
+    # Always strip loose vertices/edges.
+    verts_before = len(obj.data.vertices)
+    bm = bmesh.new()
+    try:
+        bm.from_mesh(obj.data)
+        loose_edges = [e for e in bm.edges if not e.link_faces]
+        if loose_edges:
+            bmesh.ops.delete(bm, geom=loose_edges, context='EDGES')
+        loose_verts = [v for v in bm.verts if not v.link_edges]
+        if loose_verts:
+            bmesh.ops.delete(bm, geom=loose_verts, context='VERTS')
+        bm.to_mesh(obj.data)
+    finally:
+        bm.free()
+    removed = verts_before - len(obj.data.vertices)
+    if removed > 0:
+        log.d(f"  Removed {removed} loose vertex/vertices")
 
 def export(operator):
     directory: str = operator.directory
@@ -254,13 +282,11 @@ def export(operator):
     log.i("Creating temporary duplicates for safe exporting...")
     with temporary_mesh_duplicates(all_objects_to_export) as duplicates_map:
 
-        if any([scene.replicant_preprocessing_steps.rip_mesh_uv_islands,
-                scene.replicant_preprocessing_steps.triangulate]):
-            # Preprocess all duplicates
-            log.i("Preprocessing meshes...")
-            for duplicate in duplicates_map.values():
-                preprocess_mesh_for_export(duplicate)
-            log.i("Exporting preprocessed meshes...")
+        # Preprocess all duplicates.
+        log.i("Preprocessing meshes...")
+        for duplicate in duplicates_map.values():
+            preprocess_mesh_for_export(duplicate)
+        log.i("Exporting preprocessed meshes...")
 
         # Now perform the actual export using the duplicates
         for root, collections in export_collections.items():
