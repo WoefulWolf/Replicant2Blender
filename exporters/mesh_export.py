@@ -283,6 +283,7 @@ def export(operator):
             mesh_asset.meshes.clear()
             mesh_asset.imported_materials.clear()
 
+            dropped_file_indices: set[int] = set()
             for file_data in pack.files_data:
                 file: PackFile = pack.files[file_data.file_index]
                 mesh_head: tpGxMeshHead = file.content.asset_data
@@ -293,6 +294,12 @@ def export(operator):
                 # Get original objects
                 b_objs_original = get_collection_objects(collections, file.name)
                 log.d(f"Found {len(b_objs_original)} objects to export to {file.name}")
+
+                # No enabled objects for this slot — drop it from the output pack entirely
+                if len(b_objs_original) == 0:
+                    log.d(f"No enabled objects for {file.name}, dropping from output pack")
+                    dropped_file_indices.add(file_data.file_index)
+                    continue
 
                 # Map to duplicates
                 b_objs = [duplicates_map[obj] for obj in b_objs_original if obj in duplicates_map]
@@ -400,6 +407,21 @@ def export(operator):
 
                 mesh_head.material_groups = material_groups
 
+            # Remove dropped slots from pack.files and renumber remaining file_data.file_index
+            if dropped_file_indices:
+                pack.files_data = [fd for fd in pack.files_data if fd.file_index not in dropped_file_indices]
+                new_files = []
+                old_to_new: dict[int, int] = {}
+                for old_idx, pack_file in enumerate(pack.files):
+                    if old_idx in dropped_file_indices:
+                        continue
+                    old_to_new[old_idx] = len(new_files)
+                    new_files.append(pack_file)
+                pack.files = new_files
+                for fd in pack.files_data:
+                    fd.file_index = old_to_new[fd.file_index]
+                log.d(f"Dropped {len(dropped_file_indices)} empty slot(s) from output pack")
+
             packs.append((filepath, pack))
             log.d(f"Generated mesh data for {root.name}")
 
@@ -435,20 +457,8 @@ class VertexData:
         # Ensure mesh has tangents calculated
         mesh.calc_tangents()
 
-        # Get UV layers
         uv_layers = mesh.uv_layers
-
-        # Get vertex color layers
         color_layers = mesh.vertex_colors
-
-        # Initialize lists
-        self.positions = []
-        self.normals = []
-        self.tangents = []
-        self.uv_maps = [ [] for _ in range(len(uv_layers)) ]
-        self.vertex_colors = [ [] for _ in range(len(color_layers)) ]
-        self.bones = []
-        self.weights = []
 
         # Get armature for bone index mapping
         armature = None
@@ -465,87 +475,94 @@ class VertexData:
                 if vg.name in bone_names:
                     vg_to_bone_idx[vg.index] = bone_names[vg.name]
 
-        # Dictionary to store data per vertex index
-        vertex_data = {}
+        num_verts = len(mesh.vertices)
+        num_loops = len(mesh.loops)
 
-        # Iterate through loops to get the data
+        # Bulk-extract vertex positions
+        positions_flat = np.empty(num_verts * 3, dtype=np.float32)
+        mesh.vertices.foreach_get('co', positions_flat)
+        positions_arr = positions_flat.reshape(num_verts, 3)
+
+        # Bulk-extract loop attributes
+        loop_vert_indices = np.empty(num_loops, dtype=np.int32)
+        mesh.loops.foreach_get('vertex_index', loop_vert_indices)
+
+        loop_normals_flat = np.empty(num_loops * 3, dtype=np.float32)
+        mesh.loops.foreach_get('normal', loop_normals_flat)
+        loop_normals = loop_normals_flat.reshape(num_loops, 3)
+
+        loop_tangents_flat = np.empty(num_loops * 3, dtype=np.float32)
+        mesh.loops.foreach_get('tangent', loop_tangents_flat)
+        loop_tangents = loop_tangents_flat.reshape(num_loops, 3)
+
+        loop_bitangent_signs = np.empty(num_loops, dtype=np.float32)
+        mesh.loops.foreach_get('bitangent_sign', loop_bitangent_signs)
+
+        uvs_per_layer = []
+        for uv_layer in uv_layers:
+            uvs_flat = np.empty(num_loops * 2, dtype=np.float32)
+            uv_layer.data.foreach_get('uv', uvs_flat)
+            uvs_per_layer.append(uvs_flat.reshape(num_loops, 2))
+
+        colors_per_layer = []
+        for color_layer in color_layers:
+            colors_flat = np.empty(num_loops * 4, dtype=np.float32)
+            color_layer.data.foreach_get('color', colors_flat)
+            colors_per_layer.append(colors_flat.reshape(num_loops, 4))
+
+        # For each vertex used in any loop, find the smallest loop index referencing it.
+        # np.unique returns sorted unique values + index of first occurrence — matches the
+        # original "skip if already seen" semantics applied during a polygon-order walk.
+        unique_verts, first_loop_per_vert = np.unique(loop_vert_indices, return_index=True)
+
+        out_positions = positions_arr[unique_verts]
+        out_normals = loop_normals[first_loop_per_vert]
+        out_tangents4 = np.concatenate(
+            [loop_tangents[first_loop_per_vert], loop_bitangent_signs[first_loop_per_vert, None]],
+            axis=1,
+        )
+        out_uvs = [uvs[first_loop_per_vert] for uvs in uvs_per_layer]
+        out_colors = [c[first_loop_per_vert] for c in colors_per_layer]
+
+        # Per-vertex bone/weight assembly (no foreach_get equivalent for vertex_groups)
+        out_bones: list[list[int]] = []
+        out_weights: list[list[float]] = []
         has_unassigned_vertices = False
-        for poly in mesh.polygons:
-            for loop_index in poly.loop_indices:
-                loop = mesh.loops[loop_index]
-                vert_index = loop.vertex_index
 
-                # Skip if we already have data for this vertex
-                if vert_index in vertex_data:
-                    continue
+        for vert_index in unique_verts:
+            vert = mesh.vertices[int(vert_index)]
+            bone_weights: list[tuple[int, float]] = []
+            for g in vert.groups:
+                if g.group in vg_to_bone_idx:
+                    bone_weights.append((vg_to_bone_idx[g.group], g.weight))
 
-                vert = mesh.vertices[vert_index]
+            bone_weights.sort(key=lambda x: x[1], reverse=True)
+            bone_weights = bone_weights[:4]
 
-                vertex_data[vert_index] = {
-                    'position': tuple(vert.co),
-                    'normal': tuple(loop.normal),
-                    'tangent': tuple(loop.tangent),
-                    'bitangent_sign': loop.bitangent_sign,
-                    'uv_maps': {},
-                    'vertex_colors': {},
-                    'bones': [],
-                    'weights': []
-                }
+            vertex_bones: list[int] = [0, 0, 0, 0]
+            vertex_weights: list[float] = []
+            for i, (bone_idx, weight) in enumerate(bone_weights):
+                vertex_bones[i] = bone_idx
+                vertex_weights.append(weight)
 
-                # Get UV coordinates for all UV maps
-                for uv_layer in uv_layers:
-                    uv_coord = list(uv_layer.data[loop_index].uv)
-                    vertex_data[vert_index]['uv_maps'][uv_layer.name] = tuple(uv_coord)
-
-                # Get vertex colors for all color layers
-                for color_layer in color_layers:
-                    color = color_layer.data[loop_index].color
-                    vertex_data[vert_index]['vertex_colors'][color_layer.name] = tuple(color)
-
-                # Get bone weights (from vertex groups)
-                # Map vertex group indices to armature bone indices
-                bone_weights: list[tuple[int, float]] = []
-                for g in vert.groups:
-                    if g.group in vg_to_bone_idx:
-                        bone_idx = vg_to_bone_idx[g.group]
-                        bone_weights.append((bone_idx, g.weight))
-
-                # Sort by weight descending and take top 4 strongest
-                bone_weights.sort(key=lambda x: x[1], reverse=True)
-                bone_weights = bone_weights[:4]  # Limit to 4 bones
-
-                # Bones always have exactly 4 ints, pad with zeros
-                vertex_bones: list[int] = [0, 0, 0, 0]
-                vertex_weights: list[float] = []
-
-                for i, (bone_idx, weight) in enumerate(bone_weights):
-                    vertex_bones[i] = bone_idx
-                    vertex_weights.append(weight)
-
-                vertex_data[vert_index]['bones'] = vertex_bones
-                if sum(vertex_weights) == 0:
-                    has_unassigned_vertices = True
-                    continue
-                vertex_data[vert_index]['weights'] = [float(i)/sum(vertex_weights) for i in vertex_weights] # Normalize weights
+            out_bones.append(vertex_bones)
+            total_weight = sum(vertex_weights)
+            if total_weight == 0:
+                has_unassigned_vertices = True
+                out_weights.append([])
+            else:
+                out_weights.append([w / total_weight for w in vertex_weights])
 
         if has_unassigned_vertices:
             log.e(f"Cannot generate complete weights for {obj.name}! Some vertices are unassigned!")
 
-        # Convert to sorted lists
-        for vert_index in sorted(vertex_data.keys()):
-            vert_dict = vertex_data[vert_index]
-            self.positions.append(vert_dict['position'])
-            self.normals.append(vert_dict['normal'])
-            self.tangents.append(vert_dict['tangent'] + (vert_dict['bitangent_sign'],))
-
-            for i, uv_coord in enumerate(vert_dict['uv_maps'].values()):
-                self.uv_maps[i].append(uv_coord)
-
-            for i, color in enumerate(vert_dict['vertex_colors'].values()):
-                self.vertex_colors[i].append(color)
-
-            self.bones.append(vert_dict['bones'])
-            self.weights.append(vert_dict['weights'])
+        self.positions = [tuple(p) for p in out_positions.tolist()]
+        self.normals = [tuple(n) for n in out_normals.tolist()]
+        self.tangents = [tuple(t) for t in out_tangents4.tolist()]
+        self.uv_maps = [[tuple(uv) for uv in layer.tolist()] for layer in out_uvs]
+        self.vertex_colors = [[tuple(c) for c in layer.tolist()] for layer in out_colors]
+        self.bones = out_bones
+        self.weights = out_weights
 
 def get_loops_and_material_groups(obj: Object, obj_index: int, materials: list[str]) -> tuple[list[tuple[int, int, int]], list[MaterialGroup]] | tuple[None, None]:
     if obj.type != 'MESH':
