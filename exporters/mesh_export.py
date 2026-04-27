@@ -19,6 +19,8 @@ from ..util import fnv1, get_collection_objects, get_export_collections, log
 from ..operators.triangulate import triangulate_mesh
 from ..operators.rip_mesh_uv_islands import rip_mesh_uv_islands
 from ..operators.apply_modifiers import apply_modifiers
+from ..operators.limit_bones import limit_bones
+from ..operators.normalize_weights import normalize_weights
 
 def get_all_layer_collections_recursive(layer_collection):
     """Recursively get all layer collections including nested ones."""
@@ -208,6 +210,24 @@ def preprocess_mesh_for_export(obj: Object):
         success, message, mod_count = apply_modifiers(obj, context)
         if mod_count == 0:
             log.d(f"  No modifiers to apply")
+        elif success:
+            log.d(f"  {message}")
+        else:
+            log.w(f"  {message}")
+
+    if context.scene.replicant_preprocessing_steps.limit_bones:
+        success, message, vg_count = limit_bones(obj, context)
+        if vg_count == 0:
+            log.d(f"  No vertex groups to limit")
+        elif success:
+            log.d(f"  {message}")
+        else:
+            log.w(f"  {message}")
+
+    if context.scene.replicant_preprocessing_steps.normalize_weights:
+        success, message, vg_count = normalize_weights(obj, context)
+        if vg_count == 0:
+            log.d(f"  No vertex groups to normalize")
         elif success:
             log.d(f"  {message}")
         else:

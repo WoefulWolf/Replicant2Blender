@@ -13,6 +13,18 @@ class PreprocessingSteps(bpy.types.PropertyGroup):
         default=True,
     )
 
+    limit_bones: bpy.props.BoolProperty(
+        name="Limit Bones to 4",
+        description="For each vertex, keep only the 4 strongest bone-weight assignments. The game format only stores up to 4 weights per vertex",
+        default=True,
+    )
+
+    normalize_weights: bpy.props.BoolProperty(
+        name="Normalize Weights",
+        description="Normalize all vertex weights so they sum to 1. The game reconstructs the implicit weight as 1 - sum(stored), so non-normalized vertices are misinterpreted on read",
+        default=True,
+    )
+
     triangulate: bpy.props.BoolProperty(
         name="Triangulate Meshes",
         description="Enable automated triangulation of meshes",
@@ -232,6 +244,8 @@ def mesh_export(layout: UILayout, context: Context):
     pp_box.label(text="Non-Destructive Preprocessing - It won't touch your actual objects™", icon='PRESET')
     row = pp_box.row(align=True)
     row.prop(context.scene.replicant_preprocessing_steps, "apply_modifiers", icon='MODIFIER')
+    row.prop(context.scene.replicant_preprocessing_steps, "limit_bones", icon='BONE_DATA')
+    row.prop(context.scene.replicant_preprocessing_steps, "normalize_weights", icon='GROUP_VERTEX')
     row.prop(context.scene.replicant_preprocessing_steps, "triangulate", icon='MOD_TRIANGULATE')
     row.prop(context.scene.replicant_preprocessing_steps, "rip_mesh_uv_islands", icon='UV_ISLANDSEL')
 
