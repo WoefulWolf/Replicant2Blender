@@ -358,8 +358,11 @@ class tpGxMeshData:
         index_buffers_start = writer.tell()
         for i, obj_indices in enumerate(self.object_indices):
             object = mesh_head.objects[i]
+            # Byte offset (not index-count) of this object's indices within the
+            # global index buffer.
+            object.indices_start_offset = writer.tell() - index_buffers_start
             obj_indices.write_to(writer, base_offset, object)
-        index_buffers_end = writer.tell()        
+        index_buffers_end = writer.tell()
 
         mesh_head.index_buffers_offset.offset = index_buffers_start - base_offset
         mesh_head.total_index_buffers_size = index_buffers_end - index_buffers_start

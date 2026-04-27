@@ -356,12 +356,17 @@ def export(operator):
                 materials: list[str] = []
                 for b_obj in b_objs:
                     for material in b_obj.data.materials:
+                        if material is None:
+                            continue
                         if material.name in materials:
+                            continue
+                        # Skip materials that no polygon actually uses.
+                        if material.name not in material_max_weights:
                             continue
                         materials.append(material.name)
                         mesh_head.materials.append(MeshHeadMaterial(
                             name=material.name,
-                            unknown_uint32=material_max_weights[material.name], # Don't ask me, but this is my best possible guess that seems to work
+                            unknown_uint32=material_max_weights[material.name], # Max bone-weights across vertices using this material
                             unknown_byte=0
                         ))
                 log.d(f"Found {len(materials)} materials used.")
@@ -450,14 +455,6 @@ def export(operator):
                     )
                     mesh_head.bounding_box_coord1 = bbox_min
                     mesh_head.bounding_box_coord2 = bbox_max
-
-                # Recompute each object's cumulative offset into the file's global index buffer.
-                # Iterates all objects (including any kept from the original pack) since changing
-                # one object's index_count shifts every subsequent object's start.
-                running_index_offset = 0
-                for obj in mesh_head.objects:
-                    obj.indices_start_offset = running_index_offset
-                    running_index_offset += obj.index_count
 
             # Remove dropped slots from pack.files and renumber remaining file_data.file_index
             if dropped_file_indices:
