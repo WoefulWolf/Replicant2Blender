@@ -305,6 +305,7 @@ def export(operator):
             pack.imports.clear()
 
             asset_header: tpXonAssetHeader = pack.asset_packages[0].content.asset_data
+            asset_header.imports.clear()
             mesh_asset: tpGxMeshAssetV2 = asset_header.assets[0].asset_content
             mesh_asset.meshes.clear()
             mesh_asset.imported_materials.clear()

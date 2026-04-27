@@ -229,7 +229,7 @@ def mesh_export(layout: UILayout, context: Context):
         return
 
     pp_box = box.box()
-    pp_box.label(text="Non-Destructive Preprocessing", icon='PRESET')
+    pp_box.label(text="Non-Destructive Preprocessing - It won't touch your actual objects™", icon='PRESET')
     row = pp_box.row(align=True)
     row.prop(context.scene.replicant_preprocessing_steps, "apply_modifiers", icon='MODIFIER')
     row.prop(context.scene.replicant_preprocessing_steps, "triangulate", icon='MOD_TRIANGULATE')
